@@ -1,6 +1,6 @@
 import cors from 'cors'
 import express, { type ErrorRequestHandler } from 'express'
-import { healthRouter } from './routes/health'
+import { healthRouter } from './routes/health.js'
 
 export function createApp() {
   const app = express()
