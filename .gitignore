@@ -1,0 +1,17 @@
+node_modules/
+dist/
+build/
+.env
+.env.local
+*.log
+npm-debug.log*
+.DS_Store
+coverage/
+.vscode/
+*.tsbuildinfo
+
+# Claude Code local settings (contain machine-specific permissions, may include secrets in command history)
+.claude/settings.local.json
+
+# accidental session screenshot
+открытый ssh-ключ.png
