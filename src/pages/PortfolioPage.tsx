@@ -1,8 +1,9 @@
-﻿import { useState } from 'react'
+import { useState } from 'react'
 import { Card, StatCard, PnLValue, Badge, AllocationBar, Avatar, Tabs, Button, IconButton, Select } from '../components'
-import { Sparkles, Download, PackageOpen } from 'lucide-react'
+import { Sparkles, Download, PackageOpen, ChevronDown, ChevronRight } from 'lucide-react'
 import { usePortfolio } from '../hooks/usePortfolio'
 import { usePortfolioStore } from '../store/portfolioStore'
+import type { AccountSummary } from '@/types'
 
 const RUB = new Intl.NumberFormat('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 const NUM0 = new Intl.NumberFormat('ru-RU')
@@ -41,8 +42,197 @@ function EmptyState() {
   )
 }
 
+// ─── Сводный отчёт ────────────────────────────────────────────────────────────
+
+function SummaryReportTable({ accounts, totalValue }: { accounts: AccountSummary[]; totalValue: number }) {
+  const [expanded, setExpanded] = useState<Set<string>>(new Set(accounts.map((a) => a.id)))
+
+  const toggle = (id: string) =>
+    setExpanded((prev) => {
+      const next = new Set(prev)
+      next.has(id) ? next.delete(id) : next.add(id)
+      return next
+    })
+
+  const colStyle: React.CSSProperties = { textAlign: 'right', whiteSpace: 'nowrap' }
+
+  return (
+    <table className="ia-table">
+      <thead>
+        <tr>
+          <th style={{ width: '35%' }}>Название</th>
+          <th style={colStyle}>Стоимость</th>
+          <th style={colStyle}>Инвестировано</th>
+          <th style={colStyle}>Прибыль, ₽</th>
+          <th style={colStyle}>Прибыль, %</th>
+          <th style={colStyle}>Доля, %</th>
+        </tr>
+      </thead>
+      <tbody>
+        {accounts.map((acc) => {
+          const open = expanded.has(acc.id)
+          const equityValue = acc.equityRows.reduce((s, r) => s + r.currentValue, 0)
+          const equityInvested = acc.equityRows.reduce((s, r) => s + r.investedValue, 0)
+          const equityPnl = acc.equityRows.reduce((s, r) => s + r.unrealizedPnl, 0)
+          const bondValue = acc.bondRows.reduce((s, r) => s + r.currentValue, 0)
+          const bondInvested = acc.bondRows.reduce((s, r) => s + r.investedValue, 0)
+          const bondPnl = acc.bondRows.reduce((s, r) => s + r.unrealizedPnl, 0)
+          const accShare = totalValue > 0 ? (acc.totalValue / totalValue) * 100 : 0
+
+          return (
+            <>
+              {/* Строка счёта */}
+              <tr
+                key={acc.id}
+                style={{ cursor: 'pointer', background: 'var(--surface-sunken)' }}
+                onClick={() => toggle(acc.id)}
+              >
+                <td>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 600, color: 'var(--text-1)' }}>
+                    {open ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                    {acc.name}
+                    <span style={{ fontSize: 'var(--text-xs)', color: 'var(--text-4)', fontWeight: 400 }}>{acc.broker}</span>
+                  </div>
+                </td>
+                <td className="r ia-num" style={{ fontWeight: 600, color: 'var(--text-1)' }}>{money(acc.totalValue)}</td>
+                <td className="r ia-num">{money(acc.investedValue)}</td>
+                <td className="r">
+                  <PnLValue value={acc.unrealizedPnl} display="money" size="sm" />
+                </td>
+                <td className="r">
+                  <PnLValue percent={acc.unrealizedPnlPercent} display="percent" size="sm" />
+                </td>
+                <td className="r ia-num" style={{ color: 'var(--text-3)' }}>{RUB.format(accShare)}%</td>
+              </tr>
+
+              {/* Строка: Акции */}
+              {open && (acc.equityRows.length > 0) && (
+                <tr key={acc.id + '-eq'} style={{ background: 'transparent' }}>
+                  <td style={{ paddingLeft: 36, color: 'var(--text-2)' }}>→ Акции</td>
+                  <td className="r ia-num">{money(equityValue)}</td>
+                  <td className="r ia-num">{money(equityInvested)}</td>
+                  <td className="r">
+                    <PnLValue value={equityPnl} display="money" size="sm" />
+                  </td>
+                  <td className="r">
+                    {equityInvested > 0
+                      ? <PnLValue percent={(equityPnl / equityInvested) * 100} display="percent" size="sm" />
+                      : <span style={{ color: 'var(--text-4)' }}>—</span>}
+                  </td>
+                  <td className="r ia-num" style={{ color: 'var(--text-3)' }}>
+                    {totalValue > 0 ? RUB.format((equityValue / totalValue) * 100) : '0,00'}%
+                  </td>
+                </tr>
+              )}
+
+              {/* Строка: Облигации */}
+              {open && (acc.bondRows.length > 0) && (
+                <tr key={acc.id + '-bond'} style={{ background: 'transparent' }}>
+                  <td style={{ paddingLeft: 36, color: 'var(--text-2)' }}>→ Облигации</td>
+                  <td className="r ia-num">{money(bondValue)}</td>
+                  <td className="r ia-num">{money(bondInvested)}</td>
+                  <td className="r">
+                    <PnLValue value={bondPnl} display="money" size="sm" />
+                  </td>
+                  <td className="r">
+                    {bondInvested > 0
+                      ? <PnLValue percent={(bondPnl / bondInvested) * 100} display="percent" size="sm" />
+                      : <span style={{ color: 'var(--text-4)' }}>—</span>}
+                  </td>
+                  <td className="r ia-num" style={{ color: 'var(--text-3)' }}>
+                    {totalValue > 0 ? RUB.format((bondValue / totalValue) * 100) : '0,00'}%
+                  </td>
+                </tr>
+              )}
+
+              {/* Строка: Деньги (заглушка, когда есть cashRows) */}
+              {open && (acc.cashRows.length > 0) && (
+                <tr key={acc.id + '-cash'} style={{ background: 'transparent' }}>
+                  <td style={{ paddingLeft: 36, color: 'var(--text-2)' }}>→ Денежные средства</td>
+                  <td className="r ia-num">{money(acc.cashRows.reduce((s: number, r: { rubEquivalent: number }) => s + r.rubEquivalent, 0))}</td>
+                  <td className="r ia-num" style={{ color: 'var(--text-4)' }}>—</td>
+                  <td className="r ia-num" style={{ color: 'var(--text-4)' }}>—</td>
+                  <td className="r ia-num" style={{ color: 'var(--text-4)' }}>—</td>
+                  <td className="r ia-num" style={{ color: 'var(--text-3)' }}>—</td>
+                </tr>
+              )}
+            </>
+          )
+        })}
+      </tbody>
+    </table>
+  )
+}
+
+// ─── Все активы ───────────────────────────────────────────────────────────────
+
+function AllAssetsTable({ accounts }: { accounts: AccountSummary[] }) {
+  const allRows = accounts.flatMap((acc) => [
+    ...acc.equityRows.map((r) => ({ ...r, accountName: acc.name, type: 'equity' as const })),
+    ...acc.bondRows.map((r) => ({ ...r, accountName: acc.name, type: 'bond' as const })),
+  ]).sort((a, b) => b.currentValue - a.currentValue)
+
+  if (allRows.length === 0) {
+    return <div style={{ padding: '32px', textAlign: 'center', color: 'var(--text-3)', fontSize: 'var(--text-sm)' }}>Нет позиций</div>
+  }
+
+  return (
+    <table className="ia-table">
+      <thead>
+        <tr>
+          <th>Тикер</th>
+          <th>Тип</th>
+          <th style={{ textAlign: 'right' }}>Кол-во</th>
+          <th style={{ textAlign: 'right' }}>Стоимость</th>
+          <th style={{ textAlign: 'right' }}>Инвестировано</th>
+          <th style={{ textAlign: 'right' }}>Прибыль</th>
+          <th style={{ textAlign: 'right' }}>Вес</th>
+          <th>Счёт</th>
+        </tr>
+      </thead>
+      <tbody>
+        {allRows.map((row) => {
+          const pnl = row.type === 'equity' ? row.unrealizedPnl : (row as { unrealizedPnl: number }).unrealizedPnl
+          const pnlPct = row.unrealizedPnlPercent
+          return (
+            <tr key={row.position.id}>
+              <td>
+                <div className="ia-cell-tk">
+                  <Avatar name={row.position.ticker} size="sm" color={row.type === 'bond' ? 'var(--ink-600)' : undefined} />
+                  <div>
+                    <div className="ia-cell-tk__t ia-mono">{row.position.ticker}</div>
+                    <div className="ia-cell-tk__n">{row.position.name ?? row.position.ticker}</div>
+                  </div>
+                </div>
+              </td>
+              <td>
+                <Badge tone={row.type === 'equity' ? 'neutral' : 'accent'} size="sm">
+                  {row.type === 'equity' ? 'Акция' : 'Облигация'}
+                </Badge>
+              </td>
+              <td className="r ia-num">{NUM0.format(row.position.quantity)}</td>
+              <td className="r ia-num" style={{ color: 'var(--text-1)', fontWeight: 600 }}>{money(row.currentValue)}</td>
+              <td className="r ia-num">{money(row.investedValue)}</td>
+              <td className="r">
+                {pnl !== 0
+                  ? <PnLValue value={pnl} percent={pnlPct} display="both" size="sm" />
+                  : <span style={{ color: 'var(--text-4)', fontSize: 'var(--text-xs)' }}>нет цены</span>}
+              </td>
+              <td className="r ia-num" style={{ color: 'var(--text-3)' }}>{row.portfolioWeight.toFixed(1)}%</td>
+              <td style={{ color: 'var(--text-3)', fontSize: 'var(--text-xs)' }}>{row.accountName}</td>
+            </tr>
+          )
+        })}
+      </tbody>
+    </table>
+  )
+}
+
+// ─── Главная страница ─────────────────────────────────────────────────────────
+
 export function PortfolioPage() {
-  const [tab, setTab] = useState('eq')
+  const [tab, setTab] = useState('summary')
+  const [equityAccountFilter, setEquityAccountFilter] = useState('all')
   const { summary, accounts, isLoading } = usePortfolio()
 
   if (isLoading) return <div className="ia-screen"><Spinner /></div>
@@ -50,9 +240,13 @@ export function PortfolioPage() {
   const hasPositions = accounts.some((a) => a.equityRows.length + a.bondRows.length > 0)
   if (!summary || !hasPositions) return <div className="ia-screen"><EmptyState /></div>
 
-  const allEquities = accounts.flatMap((a) => a.equityRows)
-  const allBonds = accounts.flatMap((a) => a.bondRows)
-  const allCash = accounts.flatMap((a) => a.cashRows)
+  const filteredAccounts = equityAccountFilter === 'all'
+    ? accounts
+    : accounts.filter((a) => a.id === equityAccountFilter)
+
+  const allEquities = filteredAccounts.flatMap((a) => a.equityRows)
+  const allBonds = filteredAccounts.flatMap((a) => a.bondRows)
+  const allCash = filteredAccounts.flatMap((a) => a.cashRows)
 
   const allocSegments = [
     { label: 'Акции', value: summary.equityValue },
@@ -60,8 +254,11 @@ export function PortfolioPage() {
     { label: 'Деньги', value: summary.cashValue },
   ]
 
+  const totalEquities = accounts.flatMap((a) => a.equityRows)
+
   return (
     <div className="ia-screen">
+      {/* Верхний блок: Сводка + ИИ-аналитик */}
       <div className="ia-grid-top">
         <Card>
           <div className="ia-eyebrow" style={{ marginBottom: 10 }}>Сводка портфеля</div>
@@ -75,16 +272,16 @@ export function PortfolioPage() {
           />
           <div className="ia-summ-row">
             <div>
+              <div className="ia-summ-k">Инвестировано</div>
+              <div className="ia-summ-v ia-num">{money(summary.investedValue)}</div>
+            </div>
+            <div>
               <div className="ia-summ-k">Акции</div>
               <div className="ia-summ-v ia-num">{money(summary.equityValue)}</div>
             </div>
             <div>
               <div className="ia-summ-k">Облигации</div>
               <div className="ia-summ-v ia-num">{money(summary.bondValue)}</div>
-            </div>
-            <div>
-              <div className="ia-summ-k">Деньги</div>
-              <div className="ia-summ-v ia-num">{money(summary.cashValue)}</div>
             </div>
           </div>
           <div style={{ marginTop: 18 }}>
@@ -97,7 +294,7 @@ export function PortfolioPage() {
           <div className="ia-ai-aside__head">
             <Sparkles size={16} /><span>Аналитик заметил</span>
           </div>
-          {allEquities.map((row) => {
+          {totalEquities.map((row) => {
             if (row.portfolioWeight > 25) {
               return (
                 <div key={row.position.id} className="ia-signal ia-signal--warn">
@@ -122,35 +319,56 @@ export function PortfolioPage() {
         </Card>
       </div>
 
+      {/* Таблицы с вкладками */}
       <Card tightBody>
         <div className="ia-table-head">
           <Tabs
             value={tab}
             onChange={setTab}
             items={[
-              { value: 'eq', label: 'Акции', count: allEquities.length },
-              { value: 'bond', label: 'Облигации', count: allBonds.length },
+              { value: 'summary', label: 'Сводный отчёт' },
+              { value: 'all', label: 'Все активы', count: accounts.flatMap((a) => [...a.equityRows, ...a.bondRows]).length },
+              { value: 'eq', label: 'Акции', count: accounts.flatMap((a) => a.equityRows).length },
+              { value: 'bond', label: 'Облигации', count: accounts.flatMap((a) => a.bondRows).length },
               { value: 'cash', label: 'Деньги' },
             ]}
           />
           <div className="ia-table-head__r">
-            <Select size="sm" defaultValue="all">
-              <option value="all">Все счета</option>
-              {accounts.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
-            </Select>
+            {tab !== 'summary' && (
+              <Select size="sm" value={equityAccountFilter} onChange={(e) => setEquityAccountFilter(e.target.value)}>
+                <option value="all">Все счета</option>
+                {accounts.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
+              </Select>
+            )}
             <IconButton variant="outlined" label="Экспорт"><Download size={16} /></IconButton>
           </div>
         </div>
 
+        {/* ── Сводный отчёт ── */}
+        {tab === 'summary' && (
+          <SummaryReportTable accounts={accounts} totalValue={summary.totalValue} />
+        )}
+
+        {/* ── Все активы ── */}
+        {tab === 'all' && (
+          <AllAssetsTable accounts={filteredAccounts} />
+        )}
+
+        {/* ── Акции ── */}
         {tab === 'eq' && (
           allEquities.length === 0
             ? <div style={{ padding: '32px', textAlign: 'center', color: 'var(--text-3)', fontSize: 'var(--text-sm)' }}>Акции не найдены</div>
             : <table className="ia-table">
                 <thead>
                   <tr>
-                    <th>Тикер</th><th className="r">Кол-во</th><th className="r">Средняя</th>
-                    <th className="r">Цена</th><th className="r">Стоимость</th>
-                    <th className="r">P&L</th><th className="r">Вес</th>
+                    <th>Тикер</th>
+                    <th className="r">Кол-во</th>
+                    <th className="r">Средняя</th>
+                    <th className="r">Цена</th>
+                    <th className="r">Стоимость</th>
+                    <th className="r">Инвестировано</th>
+                    <th className="r">P&L</th>
+                    <th className="r">Вес</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -169,6 +387,7 @@ export function PortfolioPage() {
                       <td className="r ia-num">{RUB.format(row.position.averagePrice)}</td>
                       <td className="r ia-num">{RUB.format(row.currentPrice)}</td>
                       <td className="r ia-num" style={{ color: 'var(--text-1)', fontWeight: 600 }}>{money(row.currentValue)}</td>
+                      <td className="r ia-num">{money(row.investedValue)}</td>
                       <td className="r">
                         {row.unrealizedPnl !== 0
                           ? <PnLValue value={row.unrealizedPnl} percent={row.unrealizedPnlPercent} display="both" size="sm" />
@@ -181,15 +400,21 @@ export function PortfolioPage() {
               </table>
         )}
 
+        {/* ── Облигации ── */}
         {tab === 'bond' && (
           allBonds.length === 0
             ? <div style={{ padding: '32px', textAlign: 'center', color: 'var(--text-3)', fontSize: 'var(--text-sm)' }}>Облигации не найдены</div>
             : <table className="ia-table">
                 <thead>
                   <tr>
-                    <th>Выпуск</th><th className="r">Кол-во</th><th className="r">Цена %</th>
-                    <th className="r">Стоимость</th><th className="r">Купон %</th>
-                    <th className="r">YTM</th><th>Погашение</th>
+                    <th>Выпуск</th>
+                    <th className="r">Кол-во</th>
+                    <th className="r">Стоимость</th>
+                    <th className="r">Инвестировано</th>
+                    <th className="r">Прибыль</th>
+                    <th className="r">Купон %</th>
+                    <th className="r">YTM</th>
+                    <th>Погашение</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -205,8 +430,13 @@ export function PortfolioPage() {
                         </div>
                       </td>
                       <td className="r ia-num">{NUM0.format(row.position.quantity)}</td>
-                      <td className="r ia-num">{row.currentPrice.toFixed(2)}</td>
                       <td className="r ia-num" style={{ color: 'var(--text-1)', fontWeight: 600 }}>{money(row.currentValue)}</td>
+                      <td className="r ia-num">{money(row.investedValue)}</td>
+                      <td className="r">
+                        {row.unrealizedPnl !== 0
+                          ? <PnLValue value={row.unrealizedPnl} percent={row.unrealizedPnlPercent} display="both" size="sm" />
+                          : <span style={{ color: 'var(--text-4)', fontSize: 'var(--text-xs)' }}>нет цены</span>}
+                      </td>
                       <td className="r ia-num">{row.position.couponRate != null ? row.position.couponRate.toFixed(2) + '%' : '—'}</td>
                       <td className="r">
                         {row.ytm != null
@@ -224,6 +454,7 @@ export function PortfolioPage() {
               </table>
         )}
 
+        {/* ── Деньги ── */}
         {tab === 'cash' && (
           allCash.length === 0
             ? <div style={{ padding: '32px', textAlign: 'center', color: 'var(--text-3)', fontSize: 'var(--text-sm)' }}>Денежные остатки не учтены</div>

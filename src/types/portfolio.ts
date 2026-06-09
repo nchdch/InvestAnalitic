@@ -7,6 +7,7 @@ export interface EquityRow {
   position: EquityPosition
   currentPrice: number
   currentValue: number
+  investedValue: number
   unrealizedPnl: number
   unrealizedPnlPercent: number
   portfolioWeight: number
@@ -17,8 +18,10 @@ export interface BondRow {
   position: BondPosition
   currentPrice: number
   currentValue: number
+  investedValue: number
   ytm: number | null
   daysToMaturity: number | null
+  unrealizedPnl: number
   unrealizedPnlPercent: number
   portfolioWeight: number
 }
@@ -36,7 +39,9 @@ export interface AccountSummary {
   name: string
   broker: string
   totalValue: number
+  investedValue: number
   unrealizedPnl: number
+  unrealizedPnlPercent: number
   portfolioWeight: number
   equityRows: EquityRow[]
   bondRows: BondRow[]
@@ -46,6 +51,7 @@ export interface AccountSummary {
 /** Верхняя сводка всего портфеля. */
 export interface PortfolioSummary {
   totalValue: number
+  investedValue: number
   equityValue: number
   bondValue: number
   cashValue: number

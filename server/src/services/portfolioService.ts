@@ -104,6 +104,7 @@ export async function getPortfolioSummary(orgId?: string) {
     const bondRows = []
     let accValue = 0
     let accPnl = 0
+    let accCost = 0
 
     for (const p of accPositions) {
       const qty = Number(p.quantity)
@@ -119,6 +120,7 @@ export async function getPortfolioSummary(orgId?: string) {
         const pnlPct = cost > 0 ? (pnl / cost) * 100 : 0
         accValue += value
         accPnl += pnl
+        accCost += cost
         totalEquityValue += value
         totalCost += cost
 
@@ -137,19 +139,20 @@ export async function getPortfolioSummary(orgId?: string) {
           },
           currentPrice: lastPrice,
           currentValue: value,
+          investedValue: cost,
           unrealizedPnl: pnl,
           unrealizedPnlPercent: Math.round(pnlPct * 100) / 100,
-          portfolioWeight: 0,  // заполним после расчёта totalValue
+          portfolioWeight: 0,
         })
       } else if (p.asset_type === 'bond') {
         const faceValue = p.face_value != null ? Number(p.face_value) : 1000
-        // Цена облигации хранится как % от номинала
         const value = qty * (lastPrice / 100) * faceValue
         const cost = qty * (avgPrice / 100) * faceValue
         const pnl = value - cost
         const pnlPct = cost > 0 ? (pnl / cost) * 100 : 0
         accValue += value
         accPnl += pnl
+        accCost += cost
         totalBondValue += value
         totalCost += cost
 
@@ -179,8 +182,10 @@ export async function getPortfolioSummary(orgId?: string) {
           },
           currentPrice: lastPrice,
           currentValue: value,
+          investedValue: cost,
           ytm,
           daysToMaturity: days,
+          unrealizedPnl: pnl,
           unrealizedPnlPercent: Math.round(pnlPct * 100) / 100,
           portfolioWeight: 0,
         })
@@ -190,12 +195,16 @@ export async function getPortfolioSummary(orgId?: string) {
     totalValue += accValue
     totalUnrealizedPnl += accPnl
 
+    const accPnlPct = accCost > 0 ? Math.round((accPnl / accCost) * 10000) / 100 : 0
+
     return {
       id: acc.id,
       name: acc.name,
       broker: acc.broker,
       totalValue: accValue,
-      unrealizedPnl: accPnl,
+      investedValue: Math.round(accCost * 100) / 100,
+      unrealizedPnl: Math.round(accPnl * 100) / 100,
+      unrealizedPnlPercent: accPnlPct,
       portfolioWeight: 0,
       equityRows,
       bondRows,
@@ -220,6 +229,7 @@ export async function getPortfolioSummary(orgId?: string) {
 
   return {
     totalValue: Math.round(totalValue * 100) / 100,
+    investedValue: Math.round(totalCost * 100) / 100,
     equityValue: Math.round(totalEquityValue * 100) / 100,
     bondValue: Math.round(totalBondValue * 100) / 100,
     cashValue: 0,
