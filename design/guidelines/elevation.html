@@ -1,0 +1,28 @@
+<!-- @dsCard group="Spacing" viewport="700x180" name="Elevation" subtitle="Soft, cool-tinted shadow ramp + accent glow" -->
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="../styles.css">
+<style>
+  html,body{margin:0}
+  body{background:var(--surface-app);font-family:var(--font-sans);color:var(--text-2);padding:24px}
+  .lead{font-size:14px;color:var(--text-1);font-weight:600;margin-bottom:18px}
+  .row{display:flex;gap:20px;flex-wrap:wrap}
+  .col{display:flex;flex-direction:column;align-items:center;gap:10px}
+  .box{width:80px;height:54px;background:var(--surface-card);border-radius:var(--radius-lg);border:1px solid var(--border-1)}
+  .v{font-size:11px;font-weight:600;color:var(--text-1)}
+</style>
+</head>
+<body>
+  <div class="lead">Elevation</div>
+  <div class="row">
+    <div class="col"><div class="box" style="box-shadow:var(--shadow-xs)"></div><div class="v">xs</div></div>
+    <div class="col"><div class="box" style="box-shadow:var(--shadow-sm)"></div><div class="v">sm · cards</div></div>
+    <div class="col"><div class="box" style="box-shadow:var(--shadow-md)"></div><div class="v">md · popover</div></div>
+    <div class="col"><div class="box" style="box-shadow:var(--shadow-lg)"></div><div class="v">lg · modal</div></div>
+    <div class="col"><div class="box" style="box-shadow:var(--shadow-xl)"></div><div class="v">xl</div></div>
+    <div class="col"><div class="box" style="box-shadow:var(--shadow-accent);border-color:var(--accent)"></div><div class="v" style="color:var(--accent)">accent glow</div></div>
+  </div>
+</body>
+</html>

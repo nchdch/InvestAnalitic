@@ -1,0 +1,68 @@
+<!-- @dsCard group="Components" viewport="720x430" name="Data display" subtitle="StatCard · PnLValue · Badge · AllocationBar · Avatar" -->
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="../../styles.css">
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/lucide@latest"></script>
+<script src="../../_ds_bundle.js"></script>
+<style>
+  html,body{margin:0}
+  body{background:var(--surface-app);font-family:var(--font-sans);color:var(--text-2);padding:22px}
+  .grid{display:grid;grid-template-columns:1.1fr 1fr;gap:16px;align-items:start}
+  .stack{display:flex;flex-direction:column;gap:14px}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+  const { Card, StatCard, PnLValue, Badge, AllocationBar, Avatar } = window.InvestAnaliticDesignSystem_81c80b;
+  function Demo(){
+    return (
+      <div className="grid">
+        <Card>
+          <StatCard size="lg" label="Стоимость портфеля" value="2 480 350,00 ₽" delta={48230} deltaPercent={1.98} caption="за сегодня" icon={<i data-lucide="wallet" />} />
+          <div style={{height:16}} />
+          <AllocationBar segments={[
+            {label:'Акции', value:1680000},
+            {label:'Облигации', value:620000},
+            {label:'Деньги', value:180350},
+          ]} />
+        </Card>
+        <div className="stack">
+          <Card>
+            <div style={{display:'flex',gap:10,alignItems:'center',marginBottom:12}}>
+              <Avatar name="Сбер Инвестиции" />
+              <div>
+                <div style={{fontWeight:600,color:'var(--text-1)'}}>Сбер Инвестиции</div>
+                <div style={{fontSize:13,color:'var(--text-3)'}}>Брокерский счёт</div>
+              </div>
+              <span style={{marginLeft:'auto'}}><Badge tone="accent">ИИС</Badge></span>
+            </div>
+            <div style={{display:'flex',gap:18,flexWrap:'wrap'}}>
+              <div><div style={{fontSize:12,color:'var(--text-3)',marginBottom:4}}>Сегодня</div><PnLValue value={12480} percent={0.74} size="md" /></div>
+              <div><div style={{fontSize:12,color:'var(--text-3)',marginBottom:4}}>Всё время</div><PnLValue value={284600} percent={38.2} size="md" /></div>
+              <div><div style={{fontSize:12,color:'var(--text-3)',marginBottom:4}}>День</div><PnLValue value={-3120} percent={-0.18} size="md" /></div>
+            </div>
+          </Card>
+          <Card>
+            <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
+              <Badge tone="positive" dot>Выплачено</Badge>
+              <Badge tone="warning" icon={<i data-lucide="alert-triangle" />}>Концентрация 28%</Badge>
+              <Badge tone="ai" icon={<i data-lucide="sparkles" />}>Совет ИИ</Badge>
+              <Badge tone="neutral">Облигация</Badge>
+              <Badge tone="outline">MOEX</Badge>
+            </div>
+          </Card>
+        </div>
+      </div>
+    );
+  }
+  ReactDOM.createRoot(document.getElementById('root')).render(<Demo/>);
+  setTimeout(()=>window.lucide && window.lucide.createIcons(), 60);
+</script>
+</body>
+</html>

@@ -1,0 +1,31 @@
+<!-- @dsCard group="Brand" viewport="700x190" name="Logo" subtitle="Spark mark + wordmark — on light and dark" -->
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="../styles.css">
+<style>
+  html,body{margin:0}
+  body{background:var(--surface-card);font-family:var(--font-sans);color:var(--text-2);padding:0}
+  .wrap{display:grid;grid-template-columns:1fr 1fr;min-height:190px}
+  .pane{display:flex;align-items:center;gap:24px;padding:24px 28px}
+  .light{background:var(--surface-card)}
+  .dark{background:var(--ink-950)}
+  img.lock{height:40px}
+  img.mark{height:48px}
+  .cap{font-size:10px;color:var(--text-3);position:absolute;margin-top:64px}
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="pane light">
+      <img class="mark" src="../assets/logo-mark.svg" alt="mark">
+      <img class="lock" src="../assets/logo.svg" alt="InvestAnalitic">
+    </div>
+    <div class="pane dark">
+      <img class="mark" src="../assets/logo-mark.svg" alt="mark">
+      <span style="font-size:24px;font-weight:700;letter-spacing:-0.4px;color:#fff">Invest<span style="color:var(--azure-300)">Analitic</span></span>
+    </div>
+  </div>
+</body>
+</html>

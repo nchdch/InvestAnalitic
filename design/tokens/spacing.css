@@ -1,0 +1,46 @@
+/* ============================================================
+   InvestAnalitic — Spacing, radii, sizing
+   ------------------------------------------------------------
+   4px base grid. Financial UIs are dense — the ramp is fine-
+   grained at the small end where table padding lives.
+   ============================================================ */
+
+:root {
+  /* ---- Spacing scale (4px grid) ---- */
+  --space-0: 0;
+  --space-1: 2px;
+  --space-2: 4px;
+  --space-3: 6px;
+  --space-4: 8px;
+  --space-5: 10px;
+  --space-6: 12px;
+  --space-7: 16px;
+  --space-8: 20px;
+  --space-9: 24px;
+  --space-10: 32px;
+  --space-11: 40px;
+  --space-12: 48px;
+  --space-13: 64px;
+  --space-14: 80px;
+  --space-15: 96px;
+
+  /* ---- Radii ----
+     Calm, modern: soft on controls, a touch more on cards. */
+  --radius-xs: 4px;
+  --radius-sm: 6px;
+  --radius-md: 8px;     /* buttons, inputs, chips */
+  --radius-lg: 12px;    /* cards, panels */
+  --radius-xl: 16px;    /* large surfaces, modals */
+  --radius-2xl: 22px;   /* hero / feature cards */
+  --radius-pill: 999px;
+
+  /* ---- Control heights ---- */
+  --control-sm: 30px;
+  --control-md: 38px;
+  --control-lg: 46px;
+
+  /* ---- Layout ---- */
+  --layout-sidebar: 264px;
+  --layout-max: 1280px;
+  --layout-gutter: var(--space-9);
+}

@@ -1,0 +1,41 @@
+<!-- @dsCard group="Colors" viewport="700x176" name="P&L semantics" subtitle="Gain / loss / flat — hue-isolated from brand azure" -->
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="../styles.css">
+<style>
+  html,body{margin:0}
+  body{background:var(--surface-card);font-family:var(--font-sans);color:var(--text-2);padding:20px 24px}
+  .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+  .cell{border:1px solid var(--border-1);border-radius:var(--radius-lg);padding:14px 16px;background:var(--surface-card)}
+  .bar{display:flex;gap:6px;margin-bottom:12px}
+  .dot{width:26px;height:26px;border-radius:var(--radius-sm)}
+  .fig{font-family:var(--font-mono);font-variant-numeric:tabular-nums;font-size:20px;font-weight:600}
+  .lbl{font-size:11px;color:var(--text-3);margin-top:2px}
+  .lead{display:flex;align-items:baseline;gap:10px;margin-bottom:12px}
+  .lead h3{font-size:14px}
+  .tag{font-size:11px;color:var(--text-3)}
+</style>
+</head>
+<body>
+  <div class="lead"><h3>P&amp;L semantics</h3><span class="tag ia-mono">--pnl-up / --pnl-down / --pnl-flat</span></div>
+  <div class="grid">
+    <div class="cell">
+      <div class="bar"><div class="dot" style="background:var(--pnl-up)"></div><div class="dot" style="background:var(--pnl-up-soft)"></div></div>
+      <div class="fig" style="color:var(--pnl-up)">+12,34%</div>
+      <div class="lbl">Прибыль · gain (emerald)</div>
+    </div>
+    <div class="cell">
+      <div class="bar"><div class="dot" style="background:var(--pnl-down)"></div><div class="dot" style="background:var(--pnl-down-soft)"></div></div>
+      <div class="fig" style="color:var(--pnl-down)">−4,10%</div>
+      <div class="lbl">Убыток · loss (red)</div>
+    </div>
+    <div class="cell">
+      <div class="bar"><div class="dot" style="background:var(--pnl-flat)"></div><div class="dot" style="background:var(--ink-150)"></div></div>
+      <div class="fig" style="color:var(--pnl-flat)">0,00%</div>
+      <div class="lbl">Без изменений · flat</div>
+    </div>
+  </div>
+</body>
+</html>

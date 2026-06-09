@@ -1,0 +1,52 @@
+<!-- @startingPoint section="App" subtitle="Full product — dashboard, AI analyst, rebalancing, dividend calendar" viewport="1440x900" -->
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>InvestAnalitic — UI Kit</title>
+<link rel="icon" href="../../assets/logo-mark.svg">
+<link rel="stylesheet" href="../../styles.css">
+<link rel="stylesheet" href="app.css">
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/lucide@latest"></script>
+<script src="../../_ds_bundle.js"></script>
+<script src="data.js"></script>
+</head>
+<body>
+<div id="root"></div>
+<template id="__bundler_thumbnail">
+  <svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" rx="15" fill="#2C5FD4"/><path d="M15 41.5 L26 30 L34 36 L49 20" stroke="#fff" stroke-width="4.2" stroke-linecap="round" stroke-linejoin="round"/><path d="M40.5 20 H49 V28.5" stroke="#fff" stroke-width="4.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+</template>
+<script type="text/babel" src="shell.jsx"></script>
+<script type="text/babel" src="screens.jsx"></script>
+<script type="text/babel">
+  const { Sidebar, Topbar } = window.IAKit;
+  const { Dashboard, Assistant, Rebalance, Calendar } = window.IAScreens;
+  const META = {
+    dashboard: { title: 'Портфель', sub: 'Все счета · базовая валюта ₽', C: Dashboard },
+    assistant: { title: 'ИИ-аналитик', sub: 'Спроси что угодно о своём портфеле', C: Assistant },
+    rebalance: { title: 'Ребалансировка', sub: 'Приведение к целевым весам', C: Rebalance },
+    calendar:  { title: 'Выплаты', sub: 'Дивиденды и купоны', C: Calendar },
+  };
+  function App(){
+    const [nav, setNav] = React.useState('dashboard');
+    const m = META[nav];
+    const Screen = m.C;
+    return (
+      <div className="ia-app">
+        <Sidebar nav={nav} setNav={setNav} />
+        <div className="ia-main">
+          <Topbar title={m.title} sub={m.sub} />
+          <div className="ia-content"><Screen/></div>
+        </div>
+      </div>
+    );
+  }
+  ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+  setTimeout(()=>window.lucide && window.lucide.createIcons(), 80);
+</script>
+</body>
+</html>

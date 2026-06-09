@@ -1,0 +1,13 @@
+/* ============================================================
+   InvestAnalitic — Webfonts
+   ------------------------------------------------------------
+   Golos Text  — Cyrillic-native humanist grotesque (Paratype, OFL).
+                 Primary UI + display family. Excellent Cyrillic.
+   JetBrains Mono — Tabular monospace for tickers, ISINs and money
+                 figures. Cyrillic + lining tabular figures.
+   Both are served from Google Fonts (open-source / OFL). If you
+   license a bespoke brand face, swap the @import for local
+   @font-face rules pointing at the binaries in /assets/fonts.
+   ============================================================ */
+
+@import url('https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap');

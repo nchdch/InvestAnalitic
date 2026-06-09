@@ -1,0 +1,32 @@
+<!-- @dsCard group="Type" viewport="700x210" name="Mono & tabular figures" subtitle="JetBrains Mono — tickers, ISINs and kopeck-aligned money" -->
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="../styles.css">
+<style>
+  html,body{margin:0}
+  body{background:var(--surface-card);font-family:var(--font-sans);color:var(--text-2);padding:20px 24px}
+  .lead{display:flex;align-items:baseline;gap:10px;margin-bottom:12px}
+  .lead h3{font-size:14px;color:var(--text-1)}
+  .tag{font-size:11px;color:var(--text-3)}
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th{text-align:left;font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--text-3);font-weight:600;padding:0 0 8px}
+  td{padding:7px 0;border-top:1px solid var(--divider)}
+  .tk{font-family:var(--font-mono);font-weight:600;color:var(--text-1)}
+  .num{font-family:var(--font-mono);font-variant-numeric:tabular-nums;color:var(--text-1)}
+  th.r,td.r{text-align:right}
+</style>
+</head>
+<body>
+  <div class="lead"><h3>Mono &amp; tabular figures</h3><span class="tag ia-mono">.ia-mono · .ia-num</span></div>
+  <table>
+    <thead><tr><th>Тикер</th><th>ISIN</th><th class="r">Цена</th><th class="r">Стоимость</th></tr></thead>
+    <tbody>
+      <tr><td class="tk">SBER</td><td class="num">RU0009029540</td><td class="r num">286,40</td><td class="r num">1 432 000,00</td></tr>
+      <tr><td class="tk">LKOH</td><td class="num">RU0009024277</td><td class="r num">7 184,50</td><td class="r num">718 450,00</td></tr>
+      <tr><td class="tk">GAZP</td><td class="num">RU0007661625</td><td class="r num">128,06</td><td class="r num">96 045,00</td></tr>
+    </tbody>
+  </table>
+</body>
+</html>

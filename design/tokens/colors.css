@@ -1,0 +1,169 @@
+/* ============================================================
+   InvestAnalitic — Color tokens
+   ------------------------------------------------------------
+   Two layers:
+   1. PRIMITIVES  — raw scales (--ink-*, --azure-*, --gain-*, …).
+                    Never reference these directly in product UI.
+   2. SEMANTIC     — role aliases (--text-1, --surface-card,
+                    --accent, --pnl-up, …). Always build with these.
+
+   P&L semantics (gain/loss) are hue-isolated from the brand azure
+   so a green/red number is never confused with a brand element.
+   ============================================================ */
+
+:root {
+  /* ---- Primitive: Ink (cool slate neutrals) ---- */
+  --ink-950: oklch(0.18 0.012 250);
+  --ink-900: oklch(0.23 0.013 250);
+  --ink-800: oklch(0.30 0.014 250);
+  --ink-700: oklch(0.39 0.014 250);
+  --ink-600: oklch(0.49 0.014 252);
+  --ink-500: oklch(0.59 0.013 254);
+  --ink-400: oklch(0.69 0.012 256);
+  --ink-300: oklch(0.80 0.010 258);
+  --ink-200: oklch(0.89 0.007 260);
+  --ink-150: oklch(0.93 0.006 262);
+  --ink-100: oklch(0.955 0.005 264);
+  --ink-50:  oklch(0.975 0.004 266);
+  --paper:   oklch(0.99 0.003 268);
+  --white:   oklch(1 0 0);
+
+  /* ---- Primitive: Azure (brand) ---- */
+  --azure-700: oklch(0.43 0.16 256);
+  --azure-600: oklch(0.50 0.18 256);
+  --azure-500: oklch(0.56 0.19 255);
+  --azure-400: oklch(0.66 0.16 255);
+  --azure-300: oklch(0.78 0.10 256);
+  --azure-200: oklch(0.88 0.055 258);
+  --azure-100: oklch(0.945 0.028 260);
+  --azure-50:  oklch(0.975 0.014 262);
+
+  /* ---- Primitive: Gain (emerald — P&L up) ---- */
+  --gain-700: oklch(0.46 0.12 160);
+  --gain-600: oklch(0.55 0.14 159);
+  --gain-500: oklch(0.63 0.15 158);
+  --gain-100: oklch(0.945 0.035 160);
+  --gain-50:  oklch(0.975 0.018 162);
+
+  /* ---- Primitive: Loss (red — P&L down) ---- */
+  --loss-700: oklch(0.47 0.18 22);
+  --loss-600: oklch(0.55 0.20 24);
+  --loss-500: oklch(0.62 0.21 25);
+  --loss-100: oklch(0.95 0.030 25);
+  --loss-50:  oklch(0.975 0.015 25);
+
+  /* ---- Primitive: Amber (warning / attention) ---- */
+  --amber-600: oklch(0.66 0.14 70);
+  --amber-500: oklch(0.76 0.15 75);
+  --amber-100: oklch(0.95 0.045 80);
+  --amber-50:  oklch(0.975 0.025 82);
+
+  /* ---- Primitive: Violet (AI agent accent — used sparingly) ---- */
+  --violet-600: oklch(0.55 0.17 295);
+  --violet-500: oklch(0.62 0.17 295);
+  --violet-100: oklch(0.95 0.035 295);
+  --violet-50:  oklch(0.975 0.018 296);
+
+  /* ========================================================
+     SEMANTIC — light theme (default)
+     ======================================================== */
+
+  /* Text */
+  --text-1: var(--ink-900);          /* primary headings, figures */
+  --text-2: var(--ink-700);          /* body */
+  --text-3: var(--ink-500);          /* secondary / captions */
+  --text-4: var(--ink-400);          /* placeholders, disabled */
+  --text-on-accent: var(--white);
+  --text-link: var(--azure-600);
+
+  /* Surfaces */
+  --surface-app: var(--ink-100);     /* app canvas behind cards */
+  --surface-card: var(--white);      /* cards, panels */
+  --surface-sunken: var(--ink-50);   /* table headers, wells, inputs */
+  --surface-raised: var(--white);    /* popovers, dropdowns */
+  --surface-inverse: var(--ink-900); /* tooltips, dark chips */
+  --surface-ai: var(--violet-50);    /* AI assistant message bg */
+
+  /* Borders / lines */
+  --border-1: var(--ink-200);        /* default hairline */
+  --border-2: var(--ink-300);        /* stronger / inputs */
+  --border-strong: var(--ink-400);
+  --divider: var(--ink-150);
+
+  /* Brand accent */
+  --accent: var(--azure-600);
+  --accent-hover: var(--azure-700);
+  --accent-soft: var(--azure-100);
+  --accent-soft-hover: var(--azure-200);
+  --accent-ring: oklch(0.56 0.19 255 / 0.35);
+
+  /* P&L + status (role colors) */
+  --pnl-up: var(--gain-600);
+  --pnl-up-soft: var(--gain-100);
+  --pnl-down: var(--loss-600);
+  --pnl-down-soft: var(--loss-100);
+  --pnl-flat: var(--ink-500);
+
+  --positive: var(--gain-600);
+  --positive-soft: var(--gain-100);
+  --negative: var(--loss-600);
+  --negative-soft: var(--loss-100);
+  --warning: var(--amber-600);
+  --warning-soft: var(--amber-100);
+  --info: var(--azure-600);
+  --info-soft: var(--azure-100);
+  --ai: var(--violet-600);
+  --ai-soft: var(--violet-100);
+
+  --focus-ring: var(--accent-ring);
+}
+
+/* ========================================================
+   SEMANTIC — dark theme
+   Opt-in via <html data-theme="dark"> or [data-theme="dark"]
+   on any scope. Primitives are re-pointed; product UI that
+   builds on semantic tokens inverts automatically.
+   ======================================================== */
+[data-theme='dark'] {
+  --text-1: var(--ink-100);
+  --text-2: var(--ink-300);
+  --text-3: var(--ink-400);
+  --text-4: var(--ink-500);
+  --text-on-accent: var(--white);
+  --text-link: var(--azure-300);
+
+  --surface-app: oklch(0.16 0.012 252);
+  --surface-card: oklch(0.21 0.014 250);
+  --surface-sunken: oklch(0.185 0.013 251);
+  --surface-raised: oklch(0.25 0.015 250);
+  --surface-inverse: var(--ink-100);
+  --surface-ai: oklch(0.24 0.04 295);
+
+  --border-1: oklch(0.30 0.014 250);
+  --border-2: oklch(0.36 0.015 250);
+  --border-strong: oklch(0.45 0.015 250);
+  --divider: oklch(0.27 0.014 250);
+
+  --accent: var(--azure-400);
+  --accent-hover: var(--azure-300);
+  --accent-soft: oklch(0.34 0.09 256);
+  --accent-soft-hover: oklch(0.40 0.11 256);
+  --accent-ring: oklch(0.66 0.16 255 / 0.45);
+
+  --pnl-up: var(--gain-500);
+  --pnl-up-soft: oklch(0.32 0.06 160);
+  --pnl-down: var(--loss-500);
+  --pnl-down-soft: oklch(0.32 0.08 25);
+  --pnl-flat: var(--ink-400);
+
+  --positive: var(--gain-500);
+  --positive-soft: oklch(0.32 0.06 160);
+  --negative: var(--loss-500);
+  --negative-soft: oklch(0.32 0.08 25);
+  --warning: var(--amber-500);
+  --warning-soft: oklch(0.33 0.07 75);
+  --info: var(--azure-400);
+  --info-soft: oklch(0.34 0.09 256);
+  --ai: var(--violet-500);
+  --ai-soft: oklch(0.30 0.06 295);
+}

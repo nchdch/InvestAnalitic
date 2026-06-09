@@ -1,0 +1,26 @@
+<!-- @dsCard group="Type" viewport="700x230" name="Body & labels" subtitle="Reading sizes, captions and the all-caps eyebrow" -->
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="../styles.css">
+<style>
+  html,body{margin:0}
+  body{background:var(--surface-card);font-family:var(--font-sans);color:var(--text-2);padding:20px 24px}
+  .item{display:flex;align-items:baseline;gap:14px;padding:7px 0;border-bottom:1px solid var(--divider)}
+  .item:last-child{border-bottom:0}
+  .spec{margin-left:auto;font-family:var(--font-mono);font-size:10px;color:var(--text-3);white-space:nowrap}
+  .lg{font-size:var(--text-lg);color:var(--text-1)}
+  .base{font-size:var(--text-base)}
+  .sm{font-size:var(--text-sm);color:var(--text-3)}
+  .xs{font-size:var(--text-xs);color:var(--text-3)}
+</style>
+</head>
+<body>
+  <div class="item"><span class="lg">Крупный текст для подзаголовков и вводных абзацев.</span><span class="spec">Lg · 17 / 400</span></div>
+  <div class="item"><span class="base">Базовый текст интерфейса — таблицы, описания, ответы ассистента.</span><span class="spec">Base · 15 / 400</span></div>
+  <div class="item"><span class="sm">Вторичный текст: подписи, метаданные строк, сноски.</span><span class="spec">Sm · 13 / 400</span></div>
+  <div class="item"><span class="xs">Микроподписи и значения в плотных таблицах.</span><span class="spec">Xs · 12 / 400</span></div>
+  <div class="item"><span class="ia-eyebrow">Сводка портфеля</span><span class="spec">Eyebrow · 11 / 600 caps</span></div>
+</body>
+</html>

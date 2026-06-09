@@ -1,0 +1,30 @@
+<!-- @dsCard group="Spacing" viewport="700x160" name="Radii" subtitle="Corner radius scale" -->
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="../styles.css">
+<style>
+  html,body{margin:0}
+  body{background:var(--surface-card);font-family:var(--font-sans);color:var(--text-2);padding:20px 24px}
+  .lead{font-size:14px;color:var(--text-1);font-weight:600;margin-bottom:14px}
+  .row{display:flex;gap:16px;flex-wrap:wrap}
+  .col{display:flex;flex-direction:column;align-items:center;gap:8px}
+  .box{width:62px;height:48px;background:var(--accent-soft);border:1.5px solid var(--accent)}
+  .v{font-size:11px;font-weight:600;color:var(--text-1)}
+  .n{font-size:10px;font-family:var(--font-mono);color:var(--text-3)}
+</style>
+</head>
+<body>
+  <div class="lead">Corner radii</div>
+  <div class="row">
+    <div class="col"><div class="box" style="border-radius:var(--radius-xs)"></div><div class="v">xs · 4</div><div class="n">--radius-xs</div></div>
+    <div class="col"><div class="box" style="border-radius:var(--radius-sm)"></div><div class="v">sm · 6</div><div class="n">--radius-sm</div></div>
+    <div class="col"><div class="box" style="border-radius:var(--radius-md)"></div><div class="v">md · 8</div><div class="n">controls</div></div>
+    <div class="col"><div class="box" style="border-radius:var(--radius-lg)"></div><div class="v">lg · 12</div><div class="n">cards</div></div>
+    <div class="col"><div class="box" style="border-radius:var(--radius-xl)"></div><div class="v">xl · 16</div><div class="n">modals</div></div>
+    <div class="col"><div class="box" style="border-radius:var(--radius-2xl)"></div><div class="v">2xl · 22</div><div class="n">feature</div></div>
+    <div class="col"><div class="box" style="border-radius:var(--radius-pill);width:48px"></div><div class="v">pill</div><div class="n">--radius-pill</div></div>
+  </div>
+</body>
+</html>

@@ -1,0 +1,9 @@
+<svg width="248" height="56" viewBox="0 0 248 56" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="InvestAnalitic">
+  <rect x="0" y="0" width="56" height="56" rx="13" fill="#2C5FD4"></rect>
+  <path d="M13 36.5 L23 26 L30 31.5 L43 17.5" stroke="#FFFFFF" stroke-width="3.7" stroke-linecap="round" stroke-linejoin="round"></path>
+  <path d="M35.5 17.5 H43 V25" stroke="#FFFFFF" stroke-width="3.7" stroke-linecap="round" stroke-linejoin="round"></path>
+  <circle cx="13" cy="36.5" r="3.1" fill="#9DC2FF"></circle>
+  <circle cx="23" cy="26" r="3.1" fill="#9DC2FF"></circle>
+  <circle cx="30" cy="31.5" r="3.1" fill="#9DC2FF"></circle>
+  <text x="70" y="36" font-family="&#39;Golos Text&#39;, system-ui, sans-serif" font-size="24" font-weight="700" letter-spacing="-0.4" fill="#1B2333">Invest<tspan fill="#2C5FD4">Analitic</tspan></text>
+</svg>

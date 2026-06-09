@@ -1,0 +1,30 @@
+<!-- @dsCard group="Colors" viewport="700x150" name="Status & AI" subtitle="positive / negative / warning / info / ai roles" -->
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="../styles.css">
+<style>
+  html,body{margin:0}
+  body{background:var(--surface-card);font-family:var(--font-sans);color:var(--text-2);padding:20px 24px}
+  .row{display:flex;gap:12px;flex-wrap:wrap}
+  .pill{flex:1 1 0;min-width:96px;border-radius:var(--radius-md);padding:10px 12px;display:flex;flex-direction:column;gap:8px}
+  .swline{display:flex;gap:6px}
+  .d{width:22px;height:22px;border-radius:6px;border:1px solid rgba(0,0,0,.06)}
+  .nm{font-size:12px;font-weight:600;color:var(--text-1)}
+  .vr{font-size:10px;font-family:var(--font-mono);color:var(--text-3)}
+  .lead{display:flex;align-items:baseline;gap:10px;margin-bottom:12px}
+  .lead h3{font-size:14px}
+</style>
+</head>
+<body>
+  <div class="lead"><h3>Status &amp; AI roles</h3></div>
+  <div class="row">
+    <div class="pill" style="background:var(--positive-soft)"><div class="swline"><span class="d" style="background:var(--positive)"></span></div><div class="nm">Positive</div><div class="vr">--positive</div></div>
+    <div class="pill" style="background:var(--negative-soft)"><div class="swline"><span class="d" style="background:var(--negative)"></span></div><div class="nm">Negative</div><div class="vr">--negative</div></div>
+    <div class="pill" style="background:var(--warning-soft)"><div class="swline"><span class="d" style="background:var(--warning)"></span></div><div class="nm">Warning</div><div class="vr">--warning</div></div>
+    <div class="pill" style="background:var(--info-soft)"><div class="swline"><span class="d" style="background:var(--info)"></span></div><div class="nm">Info</div><div class="vr">--info</div></div>
+    <div class="pill" style="background:var(--ai-soft)"><div class="swline"><span class="d" style="background:var(--ai)"></span></div><div class="nm">AI agent</div><div class="vr">--ai</div></div>
+  </div>
+</body>
+</html>

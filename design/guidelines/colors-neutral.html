@@ -1,0 +1,36 @@
+<!-- @dsCard group="Colors" viewport="700x190" name="Neutrals · Ink" subtitle="Cool slate scale from ink-950 to paper" -->
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="../styles.css">
+<style>
+  html,body{margin:0}
+  body{background:var(--surface-card);font-family:var(--font-sans);color:var(--text-2);padding:20px 24px}
+  .row{display:flex;gap:6px;flex-wrap:wrap}
+  .sw{flex:1 1 0;min-width:48px;border-radius:var(--radius-sm);overflow:hidden;border:1px solid var(--border-1)}
+  .chip{height:46px}
+  .meta{padding:5px 6px;font-size:10px;line-height:1.25}
+  .name{color:var(--text-1);font-weight:600}
+  .val{color:var(--text-3);font-family:var(--font-mono);font-size:9px}
+  .lead{display:flex;align-items:baseline;gap:10px;margin-bottom:12px}
+  .lead h3{font-size:14px}
+  .tag{font-size:11px;color:var(--text-3)}
+</style>
+</head>
+<body>
+  <div class="lead"><h3>Ink — cool slate neutrals</h3><span class="tag ia-mono">text · surfaces · borders</span></div>
+  <div class="row">
+    <div class="sw"><div class="chip" style="background:var(--ink-950)"></div><div class="meta"><div class="name">950</div></div></div>
+    <div class="sw"><div class="chip" style="background:var(--ink-900)"></div><div class="meta"><div class="name">900</div><div class="val">text-1</div></div></div>
+    <div class="sw"><div class="chip" style="background:var(--ink-700)"></div><div class="meta"><div class="name">700</div><div class="val">text-2</div></div></div>
+    <div class="sw"><div class="chip" style="background:var(--ink-500)"></div><div class="meta"><div class="name">500</div><div class="val">text-3</div></div></div>
+    <div class="sw"><div class="chip" style="background:var(--ink-400)"></div><div class="meta"><div class="name">400</div><div class="val">text-4</div></div></div>
+    <div class="sw"><div class="chip" style="background:var(--ink-300)"></div><div class="meta"><div class="name">300</div><div class="val">border-2</div></div></div>
+    <div class="sw"><div class="chip" style="background:var(--ink-200)"></div><div class="meta"><div class="name">200</div><div class="val">border-1</div></div></div>
+    <div class="sw"><div class="chip" style="background:var(--ink-100)"></div><div class="meta"><div class="name">100</div><div class="val">app</div></div></div>
+    <div class="sw"><div class="chip" style="background:var(--ink-50)"></div><div class="meta"><div class="name">50</div><div class="val">sunken</div></div></div>
+    <div class="sw"><div class="chip" style="background:var(--paper);border-right:1px solid var(--border-1)"></div><div class="meta"><div class="name">paper</div><div class="val">card</div></div></div>
+  </div>
+</body>
+</html>
