@@ -67,6 +67,12 @@ export function AppShell({ page, onNav, onAddTrade, children }: Props) {
     }
   }
 
+  // Подтягиваем актуальные котировки при каждом обновлении страницы
+  useEffect(() => {
+    handleRefreshPrices()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
   const activeOrgs = orgs.filter((o) => o.status === 'active')
   const canSwitch = activeOrgs.length > 1
 
