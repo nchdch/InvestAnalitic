@@ -2,8 +2,11 @@ import { useState, useEffect } from 'react'
 import { useNavigate, useSearchParams, Link } from 'react-router-dom'
 import { Button, Input } from '../components'
 import { useAuthStore } from '../store/authStore'
+import { useOrgStore, getSavedOrgId } from '../store/orgStore'
 import { loginUser, registerUser, getGoogleOAuthUrl } from '../api/auth'
+import { listOrgs } from '../api/orgs'
 import logoMark from '../assets/logo-mark.svg'
+import type { Organization } from '@/types'
 
 type Tab = 'login' | 'register'
 
@@ -17,6 +20,7 @@ export function AuthPage() {
   const [busy, setBusy] = useState(false)
 
   const setAuth = useAuthStore((s) => s.setAuth)
+  const { setOrgs, setActiveOrg, setLoading: setOrgLoading } = useOrgStore()
   const navigate = useNavigate()
   const [params] = useSearchParams()
 
@@ -24,6 +28,22 @@ export function AuthPage() {
     const err = params.get('error')
     if (err) setError(decodeURIComponent(err))
   }, [params])
+
+  async function loadOrgsAndNavigate(delayMs = 0) {
+    setOrgLoading(true)
+    try {
+      const orgs = await listOrgs().catch(() => [] as Organization[])
+      setOrgs(orgs)
+      const active = orgs.filter((o) => o.status === 'active')
+      const savedId = getSavedOrgId()
+      const saved = active.find((o) => o.id === savedId)
+      setActiveOrg(saved ?? active[0] ?? null)
+    } finally {
+      setOrgLoading(false)
+    }
+    if (delayMs) await new Promise((r) => setTimeout(r, delayMs))
+    navigate('/app', { replace: true })
+  }
 
   async function submit(e: React.FormEvent) {
     e.preventDefault()
@@ -33,12 +53,12 @@ export function AuthPage() {
       if (tab === 'login') {
         const r = await loginUser(email, password)
         setAuth(r.user, r.accessToken)
-        navigate('/app', { replace: true })
+        await loadOrgsAndNavigate()
       } else {
         const r = await registerUser(email, password, name || undefined)
         setAuth(r.user, r.accessToken)
         setInfo('Письмо с подтверждением отправлено на ' + email)
-        setTimeout(() => navigate('/app', { replace: true }), 1500)
+        await loadOrgsAndNavigate(1500)
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Ошибка')

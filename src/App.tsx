@@ -21,14 +21,18 @@ import { listOrgs } from './api/orgs'
 function AppLayout() {
   const [page, setPage] = useState<PageId>('dashboard')
   const [tradeOpen, setTradeOpen] = useState(false)
-  const { activeOrg, isLoading: orgLoading } = useOrgStore()
+  const { orgs, activeOrg, isLoading: orgLoading, setActiveOrg } = useOrgStore()
   const navigate = useNavigate()
 
   useEffect(() => {
-    if (!orgLoading && !activeOrg) {
+    if (orgLoading) return
+    const activeOrgs = orgs.filter((o) => o.status === 'active')
+    if (activeOrgs.length === 0) {
       navigate('/org-setup', { replace: true })
+    } else if (!activeOrg) {
+      setActiveOrg(activeOrgs[0])
     }
-  }, [orgLoading, activeOrg, navigate])
+  }, [orgLoading, orgs, activeOrg, navigate, setActiveOrg])
 
   if (orgLoading) return (
     <div className="ia-auth-wrap">

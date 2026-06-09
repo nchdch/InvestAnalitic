@@ -197,6 +197,8 @@
   padding: 12px 0; border-bottom: 1px solid var(--divider);
 }
 .ia-org-row:last-child { border-bottom: none; }
+.ia-org-row--selectable { cursor: pointer; border-radius: var(--radius-md); padding-left: 8px; padding-right: 8px; margin-left: -8px; margin-right: -8px; }
+.ia-org-row--selectable:hover { background: var(--surface-sunken); }
 .ia-org-info { display: flex; flex-direction: column; gap: 10px; }
 .ia-org-info__row { display: flex; justify-content: space-between; gap: 12px; font-size: var(--text-sm); padding: 6px 0; border-bottom: 1px solid var(--divider); }
 .ia-org-info__row:last-child { border-bottom: none; }

@@ -71,7 +71,15 @@ export function OrgSetupPage() {
           <Card style={{ marginBottom: 24 }}>
             <div className="ia-eyebrow" style={{ marginBottom: 12 }}>Ваши организации</div>
             {myOrgs.map((org) => (
-              <div key={org.id} className="ia-org-row">
+              <div
+                key={org.id}
+                className={'ia-org-row' + (org.status === 'active' ? ' ia-org-row--selectable' : '')}
+                onClick={() => {
+                  if (org.status !== 'active') return
+                  setActiveOrg(org)
+                  navigate('/app')
+                }}
+              >
                 <div>
                   <div style={{ fontWeight: 600 }}>{org.name}</div>
                   <div style={{ fontSize: 'var(--text-sm)', color: 'var(--text-3)' }}>ИНН {org.inn}</div>
@@ -82,6 +90,9 @@ export function OrgSetupPage() {
                   </Badge>
                   {org.status === 'pending' && (
                     <Badge tone="warning" size="sm" dot>На рассмотрении</Badge>
+                  )}
+                  {org.status === 'active' && (
+                    <span style={{ fontSize: 'var(--text-xs)', color: 'var(--text-4)' }}>Открыть →</span>
                   )}
                 </div>
               </div>
