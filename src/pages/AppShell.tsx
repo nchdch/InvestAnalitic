@@ -2,12 +2,14 @@
 import { useNavigate } from 'react-router-dom'
 import logoMark from '../assets/logo-mark.svg'
 import { Button, IconButton, Avatar } from '../components'
-import { LayoutDashboard, Sparkles, Scale, Calendar, Plus, Bell, Search, Settings, LogOut, Building2, ChevronDown, ChevronUp } from 'lucide-react'
+import { LayoutDashboard, Sparkles, Scale, Calendar, Plus, Bell, Search, Settings, LogOut, Building2, ChevronDown, ChevronUp, RefreshCw } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { usePortfolio } from '../hooks/usePortfolio'
 import { useAuthStore } from '../store/authStore'
 import { useOrgStore } from '../store/orgStore'
+import { usePortfolioStore } from '../store/portfolioStore'
 import { logoutUser } from '../api/auth'
+import { refreshPrices } from '../api/client'
 
 const RUB = new Intl.NumberFormat('ru-RU', { minimumFractionDigits: 0, maximumFractionDigits: 0 })
 
@@ -47,9 +49,23 @@ export function AppShell({ page, onNav, onAddTrade, children }: Props) {
   const clearAuth = useAuthStore((s) => s.clearAuth)
   const { orgs, activeOrg, setActiveOrg, clearOrgs } = useOrgStore()
   const navigate = useNavigate()
+  const bump = usePortfolioStore((s) => s.bump)
 
   const [orgOpen, setOrgOpen] = useState(false)
   const dropdownRef = useRef<HTMLDivElement>(null)
+  const [refreshingPrices, setRefreshingPrices] = useState(false)
+
+  const handleRefreshPrices = async () => {
+    setRefreshingPrices(true)
+    try {
+      await refreshPrices()
+      bump()
+    } catch {
+      // молча игнорируем — котировки обновятся при следующей попытке
+    } finally {
+      setRefreshingPrices(false)
+    }
+  }
 
   const activeOrgs = orgs.filter((o) => o.status === 'active')
   const canSwitch = activeOrgs.length > 1
@@ -158,6 +174,16 @@ export function AppShell({ page, onNav, onAddTrade, children }: Props) {
               <input placeholder="Поиск тикера, эмитента…" />
             </div>
             <IconButton variant="outlined" label="Уведомления"><Bell size={18} /></IconButton>
+            {page === 'dashboard' && (
+              <Button
+                variant="secondary"
+                leftIcon={<RefreshCw size={16} />}
+                loading={refreshingPrices}
+                onClick={handleRefreshPrices}
+              >
+                Обновить котировки
+              </Button>
+            )}
             <Button leftIcon={<Plus size={18} />} onClick={onAddTrade}>Добавить сделку</Button>
           </div>
         </header>

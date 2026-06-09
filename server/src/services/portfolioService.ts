@@ -1,4 +1,6 @@
 ﻿import { pool } from '../db/pool.js'
+import { updatePosition } from './positionService.js'
+import { fetchMoexPrice } from './moexService.js'
 
 interface DbPosition {
   id: string
@@ -268,4 +270,38 @@ export async function getPortfolioSummary(orgId?: string) {
     baseCurrency: 'RUB',
     accounts: accountSummaries,
   }
+}
+
+/** Подтягивает текущие котировки с MOEX и обновляет last_price у позиций портфеля. */
+export async function refreshPrices(orgId?: string) {
+  const { rows: accounts } = orgId
+    ? await pool.query<{ id: string }>('SELECT id FROM accounts WHERE org_id = $1', [orgId])
+    : await pool.query<{ id: string }>('SELECT id FROM accounts')
+
+  if (accounts.length === 0) return { updated: 0, failed: 0, total: 0 }
+
+  const accountIds = accounts.map((a) => a.id)
+  const { rows: positions } = await pool.query<{ id: string; ticker: string; asset_type: string; exchange: string }>(
+    `SELECT id, ticker, asset_type, exchange FROM positions WHERE account_id = ANY($1) AND quantity > 0`,
+    [accountIds]
+  )
+
+  let updated = 0
+  let failed = 0
+
+  for (const p of positions) {
+    if (p.exchange !== 'MOEX' || (p.asset_type !== 'equity' && p.asset_type !== 'bond')) {
+      failed++
+      continue
+    }
+    const price = await fetchMoexPrice(p.ticker, p.asset_type)
+    if (price == null) {
+      failed++
+      continue
+    }
+    await updatePosition(p.id, { lastPrice: price })
+    updated++
+  }
+
+  return { updated, failed, total: positions.length }
 }

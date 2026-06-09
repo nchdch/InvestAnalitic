@@ -161,3 +161,14 @@ export function getPortfolioSummary(): Promise<PortfolioResponse> {
   return request<PortfolioResponse>(`/portfolio/summary${q}`)
 }
 
+export interface RefreshPricesResult {
+  updated: number
+  failed: number
+  total: number
+}
+export function refreshPrices(): Promise<RefreshPricesResult> {
+  const orgId = activeOrgId()
+  const q = orgId ? `?orgId=${orgId}` : ''
+  return request<RefreshPricesResult>(`/portfolio/refresh-prices${q}`, { method: 'POST' })
+}
+
