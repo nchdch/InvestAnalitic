@@ -44,140 +44,216 @@ function EmptyState() {
 
 // ─── Сводный отчёт ────────────────────────────────────────────────────────────
 
+function DashCell({ value, percent }: { value: number | null; percent?: number | null }) {
+  if (value == null) return <span style={{ color: 'var(--text-4)' }}>—</span>
+  if (percent != null) return <PnLValue value={value} percent={percent} display="both" size="sm" />
+  return <PnLValue value={value} display="money" size="sm" />
+}
+
 function SummaryReportTable({ accounts, totalValue }: { accounts: AccountSummary[]; totalValue: number }) {
-  const [expanded, setExpanded] = useState<Set<string>>(new Set(accounts.map((a) => a.id)))
+  // expandedAccounts: какие счета раскрыты
+  const [expandedAccounts, setExpandedAccounts] = useState<Set<string>>(
+    new Set(accounts.map((a) => a.id))
+  )
+  // expandedTypes: какие подгруппы (accId-eq / accId-bond) раскрыты
+  const [expandedTypes, setExpandedTypes] = useState<Set<string>>(new Set())
 
-  const toggle = (id: string) =>
-    setExpanded((prev) => {
-      const next = new Set(prev)
-      next.has(id) ? next.delete(id) : next.add(id)
-      return next
-    })
+  const toggleAcc = (id: string) =>
+    setExpandedAccounts((prev) => { const s = new Set(prev); s.has(id) ? s.delete(id) : s.add(id); return s })
 
-  const colStyle: React.CSSProperties = { textAlign: 'right', whiteSpace: 'nowrap' }
+  const toggleType = (key: string) =>
+    setExpandedTypes((prev) => { const s = new Set(prev); s.has(key) ? s.delete(key) : s.add(key); return s })
+
+  const R: React.CSSProperties = { textAlign: 'right', whiteSpace: 'nowrap' }
 
   return (
     <table className="ia-table">
       <thead>
         <tr>
-          <th style={{ width: '32%' }}>Название</th>
-          <th style={colStyle}>Стоимость</th>
-          <th style={colStyle}>Инвестировано</th>
-          <th style={colStyle}>Прибыль, ₽</th>
-          <th style={colStyle}>Прибыль, %</th>
-          <th style={colStyle}>Изм. за день</th>
-          <th style={colStyle}>Доля, %</th>
+          <th style={{ width: '30%' }}>Название</th>
+          <th style={R}>Стоимость</th>
+          <th style={R}>Инвестировано</th>
+          <th style={R}>Прибыль, ₽</th>
+          <th style={R}>Прибыль, %</th>
+          <th style={R}>Изм. за день</th>
+          <th style={R}>Доля, %</th>
         </tr>
       </thead>
       <tbody>
         {accounts.map((acc) => {
-          const open = expanded.has(acc.id)
-          const equityValue = acc.equityRows.reduce((s, r) => s + r.currentValue, 0)
+          const accOpen = expandedAccounts.has(acc.id)
+          const eqKey = acc.id + '-eq'
+          const bondKey = acc.id + '-bond'
+          const eqOpen = expandedTypes.has(eqKey)
+          const bondOpen = expandedTypes.has(bondKey)
+
+          const equityValue    = acc.equityRows.reduce((s, r) => s + r.currentValue, 0)
           const equityInvested = acc.equityRows.reduce((s, r) => s + r.investedValue, 0)
-          const equityPnl = acc.equityRows.reduce((s, r) => s + r.unrealizedPnl, 0)
+          const equityPnl      = acc.equityRows.reduce((s, r) => s + r.unrealizedPnl, 0)
           const equityDayChange = acc.equityRows.some((r) => r.dayChange != null)
             ? acc.equityRows.reduce((s, r) => s + (r.dayChange ?? 0), 0) : null
-          const bondValue = acc.bondRows.reduce((s, r) => s + r.currentValue, 0)
+
+          const bondValue    = acc.bondRows.reduce((s, r) => s + r.currentValue, 0)
           const bondInvested = acc.bondRows.reduce((s, r) => s + r.investedValue, 0)
-          const bondPnl = acc.bondRows.reduce((s, r) => s + r.unrealizedPnl, 0)
+          const bondPnl      = acc.bondRows.reduce((s, r) => s + r.unrealizedPnl, 0)
           const bondDayChange = acc.bondRows.some((r) => r.dayChange != null)
             ? acc.bondRows.reduce((s, r) => s + (r.dayChange ?? 0), 0) : null
+
           const accShare = totalValue > 0 ? (acc.totalValue / totalValue) * 100 : 0
 
           return (
-            <>
-              {/* Строка счёта */}
-              <tr
-                key={acc.id}
-                style={{ cursor: 'pointer', background: 'var(--surface-sunken)' }}
-                onClick={() => toggle(acc.id)}
-              >
+            <React.Fragment key={acc.id}>
+              {/* ── Уровень 1: Счёт ── */}
+              <tr style={{ cursor: 'pointer', background: 'var(--surface-sunken)' }} onClick={() => toggleAcc(acc.id)}>
                 <td>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 600, color: 'var(--text-1)' }}>
-                    {open ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                    {accOpen ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
                     {acc.name}
                     <span style={{ fontSize: 'var(--text-xs)', color: 'var(--text-4)', fontWeight: 400 }}>{acc.broker}</span>
                   </div>
                 </td>
                 <td className="r ia-num" style={{ fontWeight: 600, color: 'var(--text-1)' }}>{money(acc.totalValue)}</td>
                 <td className="r ia-num">{money(acc.investedValue)}</td>
-                <td className="r">
-                  <PnLValue value={acc.unrealizedPnl} display="money" size="sm" />
-                </td>
-                <td className="r">
-                  <PnLValue percent={acc.unrealizedPnlPercent} display="percent" size="sm" />
-                </td>
-                <td className="r">
-                  {acc.dayChange !== 0
-                    ? <PnLValue value={acc.dayChange} display="money" size="sm" />
-                    : <span style={{ color: 'var(--text-4)' }}>—</span>}
-                </td>
+                <td className="r"><PnLValue value={acc.unrealizedPnl} display="money" size="sm" /></td>
+                <td className="r"><PnLValue percent={acc.unrealizedPnlPercent} display="percent" size="sm" /></td>
+                <td className="r"><DashCell value={acc.dayChange !== 0 ? acc.dayChange : null} /></td>
                 <td className="r ia-num" style={{ color: 'var(--text-3)' }}>{RUB.format(accShare)}%</td>
               </tr>
 
-              {/* Строка: Акции */}
-              {open && (acc.equityRows.length > 0) && (
-                <tr key={acc.id + '-eq'} style={{ background: 'transparent' }}>
-                  <td style={{ paddingLeft: 36, color: 'var(--text-2)' }}>→ Акции</td>
+              {/* ── Уровень 2: Акции ── */}
+              {accOpen && acc.equityRows.length > 0 && (
+                <tr
+                  style={{ cursor: 'pointer' }}
+                  onClick={(e) => { e.stopPropagation(); toggleType(eqKey) }}
+                >
+                  <td style={{ paddingLeft: 32 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--text-2)', fontWeight: 500 }}>
+                      {eqOpen ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
+                      Акции
+                      <span style={{ fontSize: 'var(--text-xs)', color: 'var(--text-4)' }}>{acc.equityRows.length}</span>
+                    </div>
+                  </td>
                   <td className="r ia-num">{money(equityValue)}</td>
                   <td className="r ia-num">{money(equityInvested)}</td>
+                  <td className="r"><PnLValue value={equityPnl} display="money" size="sm" /></td>
                   <td className="r">
-                    <PnLValue value={equityPnl} display="money" size="sm" />
+                    <DashCell value={equityInvested > 0 ? (equityPnl / equityInvested) * 100 : null} />
                   </td>
-                  <td className="r">
-                    {equityInvested > 0
-                      ? <PnLValue percent={(equityPnl / equityInvested) * 100} display="percent" size="sm" />
-                      : <span style={{ color: 'var(--text-4)' }}>—</span>}
-                  </td>
-                  <td className="r">
-                    {equityDayChange != null
-                      ? <PnLValue value={equityDayChange} display="money" size="sm" />
-                      : <span style={{ color: 'var(--text-4)' }}>—</span>}
-                  </td>
+                  <td className="r"><DashCell value={equityDayChange} /></td>
                   <td className="r ia-num" style={{ color: 'var(--text-3)' }}>
                     {totalValue > 0 ? RUB.format((equityValue / totalValue) * 100) : '0,00'}%
                   </td>
                 </tr>
               )}
 
-              {/* Строка: Облигации */}
-              {open && (acc.bondRows.length > 0) && (
-                <tr key={acc.id + '-bond'} style={{ background: 'transparent' }}>
-                  <td style={{ paddingLeft: 36, color: 'var(--text-2)' }}>→ Облигации</td>
+              {/* ── Уровень 3: Каждая акция ── */}
+              {accOpen && eqOpen && acc.equityRows.map((row) => {
+                const share = totalValue > 0 ? (row.currentValue / totalValue) * 100 : 0
+                return (
+                  <tr key={row.position.id} style={{ opacity: 0.95 }}>
+                    <td style={{ paddingLeft: 56 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <Avatar name={row.position.ticker} size="sm" />
+                        <div>
+                          <div style={{ fontWeight: 600, fontSize: 'var(--text-sm)', color: 'var(--text-1)', fontFamily: 'var(--font-mono)' }}>{row.position.ticker}</div>
+                          <div style={{ fontSize: 'var(--text-xs)', color: 'var(--text-3)' }}>{row.position.name ?? row.position.ticker}</div>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="r ia-num" style={{ color: 'var(--text-1)', fontWeight: 600 }}>{money(row.currentValue)}</td>
+                    <td className="r ia-num">{money(row.investedValue)}</td>
+                    <td className="r">
+                      {row.unrealizedPnl !== 0
+                        ? <PnLValue value={row.unrealizedPnl} display="money" size="sm" />
+                        : <span style={{ color: 'var(--text-4)', fontSize: 'var(--text-xs)' }}>нет цены</span>}
+                    </td>
+                    <td className="r">
+                      {row.unrealizedPnl !== 0
+                        ? <PnLValue percent={row.unrealizedPnlPercent} display="percent" size="sm" />
+                        : <span style={{ color: 'var(--text-4)' }}>—</span>}
+                    </td>
+                    <td className="r">
+                      <DashCell value={row.dayChange} percent={row.dayChangePercent} />
+                    </td>
+                    <td className="r ia-num" style={{ color: 'var(--text-3)' }}>{RUB.format(share)}%</td>
+                  </tr>
+                )
+              })}
+
+              {/* ── Уровень 2: Облигации ── */}
+              {accOpen && acc.bondRows.length > 0 && (
+                <tr
+                  style={{ cursor: 'pointer' }}
+                  onClick={(e) => { e.stopPropagation(); toggleType(bondKey) }}
+                >
+                  <td style={{ paddingLeft: 32 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--text-2)', fontWeight: 500 }}>
+                      {bondOpen ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
+                      Облигации
+                      <span style={{ fontSize: 'var(--text-xs)', color: 'var(--text-4)' }}>{acc.bondRows.length}</span>
+                    </div>
+                  </td>
                   <td className="r ia-num">{money(bondValue)}</td>
                   <td className="r ia-num">{money(bondInvested)}</td>
+                  <td className="r"><PnLValue value={bondPnl} display="money" size="sm" /></td>
                   <td className="r">
-                    <PnLValue value={bondPnl} display="money" size="sm" />
+                    <DashCell value={bondInvested > 0 ? (bondPnl / bondInvested) * 100 : null} />
                   </td>
-                  <td className="r">
-                    {bondInvested > 0
-                      ? <PnLValue percent={(bondPnl / bondInvested) * 100} display="percent" size="sm" />
-                      : <span style={{ color: 'var(--text-4)' }}>—</span>}
-                  </td>
-                  <td className="r">
-                    {bondDayChange != null
-                      ? <PnLValue value={bondDayChange} display="money" size="sm" />
-                      : <span style={{ color: 'var(--text-4)' }}>—</span>}
-                  </td>
+                  <td className="r"><DashCell value={bondDayChange} /></td>
                   <td className="r ia-num" style={{ color: 'var(--text-3)' }}>
                     {totalValue > 0 ? RUB.format((bondValue / totalValue) * 100) : '0,00'}%
                   </td>
                 </tr>
               )}
 
-              {/* Строка: Деньги (заглушка, когда есть cashRows) */}
-              {open && (acc.cashRows.length > 0) && (
-                <tr key={acc.id + '-cash'} style={{ background: 'transparent' }}>
-                  <td style={{ paddingLeft: 36, color: 'var(--text-2)' }}>→ Денежные средства</td>
+              {/* ── Уровень 3: Каждая облигация ── */}
+              {accOpen && bondOpen && acc.bondRows.map((row) => {
+                const share = totalValue > 0 ? (row.currentValue / totalValue) * 100 : 0
+                return (
+                  <tr key={row.position.id} style={{ opacity: 0.95 }}>
+                    <td style={{ paddingLeft: 56 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <Avatar name={row.position.ticker} size="sm" color="var(--ink-600)" />
+                        <div>
+                          <div style={{ fontWeight: 600, fontSize: 'var(--text-sm)', color: 'var(--text-1)', fontFamily: 'var(--font-mono)' }}>{row.position.ticker}</div>
+                          <div style={{ fontSize: 'var(--text-xs)', color: 'var(--text-3)' }}>{row.position.name ?? row.position.ticker}</div>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="r ia-num" style={{ color: 'var(--text-1)', fontWeight: 600 }}>{money(row.currentValue)}</td>
+                    <td className="r ia-num">{money(row.investedValue)}</td>
+                    <td className="r">
+                      {row.unrealizedPnl !== 0
+                        ? <PnLValue value={row.unrealizedPnl} display="money" size="sm" />
+                        : <span style={{ color: 'var(--text-4)', fontSize: 'var(--text-xs)' }}>нет цены</span>}
+                    </td>
+                    <td className="r">
+                      {row.unrealizedPnl !== 0
+                        ? <PnLValue percent={row.unrealizedPnlPercent} display="percent" size="sm" />
+                        : <span style={{ color: 'var(--text-4)' }}>—</span>}
+                    </td>
+                    <td className="r">
+                      <DashCell value={row.dayChange} percent={row.dayChangePercent} />
+                    </td>
+                    <td className="r ia-num" style={{ color: 'var(--text-3)' }}>{RUB.format(share)}%</td>
+                  </tr>
+                )
+              })}
+
+              {/* ── Уровень 2: Деньги ── */}
+              {accOpen && acc.cashRows.length > 0 && (
+                <tr>
+                  <td style={{ paddingLeft: 32, color: 'var(--text-2)', fontWeight: 500 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <ChevronRight size={13} style={{ opacity: 0.3 }} />
+                      Денежные средства
+                    </div>
+                  </td>
                   <td className="r ia-num">{money(acc.cashRows.reduce((s: number, r: { rubEquivalent: number }) => s + r.rubEquivalent, 0))}</td>
-                  <td className="r ia-num" style={{ color: 'var(--text-4)' }}>—</td>
-                  <td className="r ia-num" style={{ color: 'var(--text-4)' }}>—</td>
-                  <td className="r ia-num" style={{ color: 'var(--text-4)' }}>—</td>
-                  <td className="r ia-num" style={{ color: 'var(--text-4)' }}>—</td>
-                  <td className="r ia-num" style={{ color: 'var(--text-3)' }}>—</td>
+                  <td colSpan={5} style={{ color: 'var(--text-4)', textAlign: 'right', fontSize: 'var(--text-xs)' }}>—</td>
                 </tr>
               )}
-            </>
+            </React.Fragment>
           )
         })}
       </tbody>
