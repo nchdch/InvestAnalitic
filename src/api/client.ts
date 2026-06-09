@@ -1,4 +1,5 @@
 ﻿import type { Account, Position, Trade, Payment, AccountSummary } from '@/types'
+import { useAuthStore } from '@/store/authStore'
 
 export interface HealthStatus {
   status: 'ok' | 'degraded'
@@ -21,9 +22,15 @@ export interface PortfolioResponse {
   accounts: AccountSummary[]
 }
 
+function authHeader(): Record<string, string> {
+  const token = useAuthStore.getState().accessToken
+  return token ? { Authorization: `Bearer ${token}` } : {}
+}
+
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
   const response = await fetch(`/api${path}`, {
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...authHeader() },
+    credentials: 'include',
     ...options,
   })
   if (!response.ok) {

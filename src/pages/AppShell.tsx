@@ -1,9 +1,12 @@
 ﻿import React from 'react'
+import { useNavigate } from 'react-router-dom'
 import logoMark from '../assets/logo-mark.svg'
 import { Button, IconButton, Avatar } from '../components'
-import { LayoutDashboard, Sparkles, Scale, Calendar, Plus, Bell, Search, Settings } from 'lucide-react'
+import { LayoutDashboard, Sparkles, Scale, Calendar, Plus, Bell, Search, Settings, LogOut } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { usePortfolio } from '../hooks/usePortfolio'
+import { useAuthStore } from '../store/authStore'
+import { logoutUser } from '../api/auth'
 
 const RUB = new Intl.NumberFormat('ru-RU', { minimumFractionDigits: 0, maximumFractionDigits: 0 })
 
@@ -39,6 +42,17 @@ const PAGE_TITLE: Record<PageId, { title: string; sub: string }> = {
 
 export function AppShell({ page, onNav, onAddTrade, children }: Props) {
   const { accounts } = usePortfolio()
+  const user = useAuthStore((s) => s.user)
+  const clearAuth = useAuthStore((s) => s.clearAuth)
+  const navigate = useNavigate()
+
+  const handleLogout = async () => {
+    await logoutUser().catch(() => {})
+    clearAuth()
+    navigate('/auth', { replace: true })
+  }
+
+  const displayName = user?.name ?? user?.email?.split('@')[0] ?? 'Пользователь'
 
   return (
     <div className="ia-app">
@@ -79,9 +93,10 @@ export function AppShell({ page, onNav, onAddTrade, children }: Props) {
         </div>
 
         <div className="ia-sidebar__user">
-          <Avatar name="Алексей М" shape="circle" size="sm" color="var(--ink-600)" />
-          <span>Алексей М.</span>
-          <IconButton label="Настройки" size="sm"><Settings size={16} /></IconButton>
+          <Avatar name={displayName} shape="circle" size="sm" color="var(--ink-600)" />
+          <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{displayName}</span>
+          <IconButton label="Управление организациями" size="sm" onClick={() => navigate('/org-setup')}><Settings size={16} /></IconButton>
+          <IconButton label="Выйти" size="sm" onClick={handleLogout}><LogOut size={16} /></IconButton>
         </div>
       </aside>
 
