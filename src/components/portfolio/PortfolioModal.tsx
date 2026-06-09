@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import {
   X, ChevronLeft, Search, Building2, TrendingUp, Bitcoin, Home, Percent,
   CreditCard, Wallet, Landmark, Briefcase, Banknote, Package, Boxes,
