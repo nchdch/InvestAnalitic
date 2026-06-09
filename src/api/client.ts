@@ -145,6 +145,15 @@ export function searchSecurities(q: string): Promise<SecuritySearchResult[]> {
   return request<SecuritySearchResult[]>(`/securities/search?q=${encodeURIComponent(q)}`)
 }
 
+export interface ExchangeRateResult {
+  currency: string
+  rate: number
+  date: string
+}
+export function getExchangeRate(currency: string): Promise<ExchangeRateResult> {
+  return request<ExchangeRateResult>(`/securities/rate?currency=${encodeURIComponent(currency)}`)
+}
+
 // Portfolio
 export function getPortfolioSummary(): Promise<PortfolioResponse> {
   const orgId = activeOrgId()

@@ -1,8 +1,8 @@
-﻿import React, { useState, useEffect, useCallback } from 'react'
-import { X, TrendingUp, Layers } from 'lucide-react'
+﻿import React, { useState, useEffect, useCallback, useRef } from 'react'
+import { X, TrendingUp, Layers, RotateCw } from 'lucide-react'
 import { Button, Input, Select } from '../index'
 import { injectOnce } from '../_internal/style'
-import { getAccounts, createAccount, createTrade } from '../../api/client'
+import { getAccounts, createAccount, createTrade, getExchangeRate } from '../../api/client'
 import { usePortfolioStore } from '../../store/portfolioStore'
 import { SecuritySearchInput } from './SecuritySearchInput'
 import type { SecuritySearchResult } from '../../api/client'
@@ -51,6 +51,15 @@ const CSS = `
 .ia-modal-error { background: var(--loss-soft); border: 1px solid var(--loss); border-radius: var(--radius-md); padding: 10px 14px; font-size: var(--text-sm); color: var(--loss); }
 .ia-modal-divider { border: 0; border-top: 1px solid var(--divider); margin: 4px 0; }
 .ia-modal-section-label { font-size: var(--text-xs); font-weight: var(--fw-semibold); letter-spacing: var(--tracking-wide); text-transform: uppercase; color: var(--text-3); }
+.ia-rate-refresh {
+  background: transparent; border: 0; cursor: pointer; color: var(--text-3);
+  display: flex; align-items: center; padding: 0; line-height: 0;
+  transition: color var(--dur-fast) var(--ease-out);
+}
+.ia-rate-refresh:hover:not(:disabled) { color: var(--accent); }
+.ia-rate-refresh:disabled { cursor: default; }
+.ia-rate-refresh.is-spinning svg { animation: ia-spin 0.7s linear infinite; }
+@keyframes ia-spin { to { transform: rotate(360deg); } }
 `
 
 const CURRENCIES = ['RUB', 'USD', 'EUR', 'CNY']
@@ -99,6 +108,8 @@ export function TradeModal({ open, onClose }: Props) {
   const [newAccBroker, setNewAccBroker] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
+  const [rateDate, setRateDate] = useState('')
+  const [fetchingRate, setFetchingRate] = useState(false)
 
   const needNewAccount = accounts.length === 0
 
@@ -106,6 +117,7 @@ export function TradeModal({ open, onClose }: Props) {
     if (!open) return
     setForm({ ...EMPTY, executedAt: today() })
     setError('')
+    setRateDate('')
     setNewAccName('')
     setNewAccBroker('')
     getAccounts()
@@ -115,6 +127,28 @@ export function TradeModal({ open, onClose }: Props) {
       })
       .catch(() => setAccounts([]))
   }, [open])
+
+  // Подтягиваем актуальный курс ЦБ при выборе не-рублёвой валюты
+  const rateRequestRef = useRef(0)
+  const loadRate = useCallback((currency: string) => {
+    if (currency === 'RUB') { setRateDate(''); return }
+    const reqId = ++rateRequestRef.current
+    setFetchingRate(true)
+    getExchangeRate(currency)
+      .then((r) => {
+        if (rateRequestRef.current !== reqId) return
+        setForm((f) => ({ ...f, exchangeRate: String(r.rate) }))
+        setRateDate(r.date)
+      })
+      .catch(() => {})
+      .finally(() => { if (rateRequestRef.current === reqId) setFetchingRate(false) })
+  }, [])
+
+  useEffect(() => {
+    if (!open) return
+    loadRate(form.currency)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [form.currency, open])
 
   const set = useCallback(<K extends keyof FormState>(k: K, v: FormState[K]) => {
     setForm((f) => ({ ...f, [k]: v }))
@@ -324,6 +358,19 @@ export function TradeModal({ open, onClose }: Props) {
                 value={form.exchangeRate}
                 onChange={(e) => set('exchangeRate', e.target.value)}
                 required
+                hint={rateDate ? `Курс ЦБ РФ на ${new Date(rateDate).toLocaleDateString('ru-RU')}, можно изменить` : undefined}
+                suffix={
+                  <button
+                    type="button"
+                    className={`ia-rate-refresh${fetchingRate ? ' is-spinning' : ''}`}
+                    onClick={() => loadRate(form.currency)}
+                    disabled={fetchingRate}
+                    aria-label="Обновить курс"
+                    title="Обновить курс"
+                  >
+                    <RotateCw size={14} />
+                  </button>
+                }
               />
             )}
 
