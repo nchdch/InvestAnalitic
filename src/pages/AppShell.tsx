@@ -26,6 +26,7 @@ export type PageId = 'dashboard' | 'assistant' | 'rebalance' | 'calendar'
 interface Props {
   page: PageId
   onNav: (page: PageId) => void
+  onAddTrade: () => void
   children: React.ReactNode
 }
 
@@ -36,7 +37,7 @@ const PAGE_TITLE: Record<PageId, { title: string; sub: string }> = {
   calendar:   { title: 'Выплаты',       sub: 'Дивиденды и купоны' },
 }
 
-export function AppShell({ page, onNav, children }: Props) {
+export function AppShell({ page, onNav, onAddTrade, children }: Props) {
   const { accounts } = usePortfolio()
 
   return (
@@ -72,7 +73,7 @@ export function AppShell({ page, onNav, children }: Props) {
               </div>
             </div>
           ))}
-          <button className="ia-navitem ia-navitem--ghost">
+          <button className="ia-navitem ia-navitem--ghost" onClick={onAddTrade}>
             <Plus size={16} /><span>Добавить счёт</span>
           </button>
         </div>
@@ -96,7 +97,7 @@ export function AppShell({ page, onNav, children }: Props) {
               <input placeholder="Поиск тикера, эмитента…" />
             </div>
             <IconButton variant="outlined" label="Уведомления"><Bell size={18} /></IconButton>
-            <Button leftIcon={<Plus size={18} />}>Добавить сделку</Button>
+            <Button leftIcon={<Plus size={18} />} onClick={onAddTrade}>Добавить сделку</Button>
           </div>
         </header>
         <div className="ia-content">{children}</div>
