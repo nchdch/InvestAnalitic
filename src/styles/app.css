@@ -1,0 +1,124 @@
+/* InvestAnalitic — app layout chrome (built on design tokens) */
+
+.ia-app {
+  display: grid;
+  grid-template-columns: var(--layout-sidebar) 1fr;
+  height: 100vh;
+  background: var(--surface-app);
+  color: var(--text-2);
+  font-family: var(--font-sans);
+}
+
+/* ---- Sidebar ---- */
+.ia-sidebar {
+  display: flex; flex-direction: column; gap: 18px;
+  background: var(--surface-card); border-right: 1px solid var(--border-1);
+  padding: 18px 14px; overflow-y: auto;
+}
+.ia-sidebar__brand { display: flex; align-items: center; gap: 10px; padding: 4px 6px 6px; }
+.ia-sidebar__word { font-size: 18px; font-weight: 500; color: var(--text-1); letter-spacing: -0.01em; }
+.ia-sidebar__word b { font-weight: 700; color: var(--accent); }
+.ia-sidebar__nav { display: flex; flex-direction: column; gap: 2px; }
+.ia-navitem {
+  display: flex; align-items: center; gap: 11px; width: 100%; text-align: left;
+  border: 0; background: transparent; cursor: pointer; font-family: inherit;
+  font-size: var(--text-base); font-weight: var(--fw-medium); color: var(--text-2);
+  padding: 9px 11px; border-radius: var(--radius-md); position: relative;
+  transition: background var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
+}
+.ia-navitem:hover { background: var(--surface-sunken); color: var(--text-1); }
+.ia-navitem.is-active { background: var(--accent-soft); color: var(--accent-hover); font-weight: var(--fw-semibold); }
+.ia-navitem--ghost { color: var(--text-3); font-weight: var(--fw-medium); }
+.ia-navitem__pip { margin-left: auto; width: 7px; height: 7px; border-radius: 50%; background: var(--ai); }
+.ia-sidebar__accounts { border-top: 1px solid var(--divider); padding-top: 14px; display: flex; flex-direction: column; gap: 4px; }
+.ia-acctmini { display: flex; align-items: center; gap: 10px; padding: 7px 8px; border-radius: var(--radius-md); }
+.ia-acctmini:hover { background: var(--surface-sunken); }
+.ia-acctmini__txt { min-width: 0; }
+.ia-acctmini__name { font-size: var(--text-sm); color: var(--text-1); font-weight: var(--fw-medium); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ia-acctmini__val { font-size: var(--text-xs); color: var(--text-3); }
+.ia-sidebar__user { margin-top: auto; display: flex; align-items: center; gap: 10px; padding: 8px; border-top: 1px solid var(--divider); font-size: var(--text-sm); color: var(--text-1); font-weight: var(--fw-medium); }
+.ia-sidebar__user :last-child { margin-left: auto; }
+
+/* ---- Main column ---- */
+.ia-main { display: flex; flex-direction: column; overflow: hidden; }
+.ia-topbar {
+  display: flex; align-items: center; justify-content: space-between; gap: 20px;
+  padding: 18px 28px; border-bottom: 1px solid var(--border-1); background: var(--surface-card);
+}
+.ia-topbar__title { font-size: var(--text-h2); font-weight: var(--fw-bold); }
+.ia-topbar__sub { font-size: var(--text-sm); color: var(--text-3); margin-top: 2px; }
+.ia-topbar__actions { display: flex; align-items: center; gap: 10px; }
+.ia-search {
+  display: flex; align-items: center; gap: 8px; background: var(--surface-sunken);
+  border: 1px solid var(--border-1); border-radius: var(--radius-md); padding: 0 12px;
+  height: var(--control-md); color: var(--text-3); width: 260px;
+}
+.ia-search input { border: 0; outline: none; background: transparent; font-family: inherit; font-size: var(--text-sm); color: var(--text-1); width: 100%; }
+.ia-content { flex: 1; overflow-y: auto; padding: 24px 28px 40px; }
+
+/* ---- Screen layouts ---- */
+.ia-screen { display: flex; flex-direction: column; gap: 20px; max-width: var(--layout-max); margin: 0 auto; }
+.ia-grid-top { display: grid; grid-template-columns: 1.15fr 1fr; gap: 20px; align-items: start; }
+.ia-summ-row { display: flex; gap: 34px; margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--divider); }
+.ia-summ-k { font-size: var(--text-xs); color: var(--text-3); margin-bottom: 5px; }
+.ia-summ-v { font-size: var(--text-h4); font-weight: var(--fw-bold); color: var(--text-1); }
+
+/* AI aside */
+.ia-ai-aside__head { display: flex; align-items: center; gap: 8px; font-size: var(--text-sm); font-weight: var(--fw-semibold); color: var(--ai); margin-bottom: 14px; }
+.ia-signal { display: flex; gap: 11px; padding: 13px; border-radius: var(--radius-md); background: var(--surface-sunken); margin-bottom: 10px; }
+.ia-signal:last-child { margin-bottom: 0; }
+.ia-signal--warn { background: var(--warning-soft); }
+.ia-signal__emoji { font-size: 17px; line-height: 1.3; }
+.ia-signal b { font-size: var(--text-sm); color: var(--text-1); display: block; margin-bottom: 3px; }
+.ia-signal p { font-size: var(--text-sm); color: var(--text-2); margin: 0 0 9px; line-height: 1.45; }
+
+/* ---- Tables ---- */
+.ia-table-head { display: flex; align-items: center; justify-content: space-between; padding: 12px 18px 0; }
+.ia-table-head__r { display: flex; align-items: center; gap: 8px; }
+.ia-table { width: 100%; border-collapse: collapse; font-size: var(--text-sm); }
+.ia-table thead th {
+  text-align: left; font-size: var(--text-2xs); font-weight: var(--fw-semibold);
+  letter-spacing: var(--tracking-wide); text-transform: uppercase; color: var(--text-3);
+  padding: 12px 18px; border-bottom: 1px solid var(--border-1); white-space: nowrap;
+  position: sticky; top: 0; background: var(--surface-card); z-index: 1;
+}
+.ia-table td { padding: 13px 18px; border-bottom: 1px solid var(--divider); color: var(--text-2); }
+.ia-table tbody tr:last-child td { border-bottom: 0; }
+.ia-table tbody tr { transition: background var(--dur-fast) var(--ease-out); }
+.ia-table tbody tr:hover { background: var(--surface-sunken); }
+.ia-table .r { text-align: right; }
+.ia-table--plain td, .ia-table--plain th { padding-left: 0; padding-right: 0; }
+.ia-cell-tk { display: flex; align-items: center; gap: 10px; }
+.ia-cell-tk__t { font-weight: var(--fw-semibold); color: var(--text-1); font-size: var(--text-sm); }
+.ia-cell-tk__n { font-size: var(--text-xs); color: var(--text-3); }
+.ia-cash { padding: 8px 18px 16px; }
+.ia-cash__row { display: flex; justify-content: space-between; padding: 12px 0; font-size: var(--text-base); color: var(--text-1); }
+
+/* ---- Chat ---- */
+.ia-chat { height: 100%; max-width: 840px; }
+.ia-chat__feed { display: flex; flex-direction: column; gap: 18px; padding-bottom: 16px; }
+.ia-chat__composer { position: sticky; bottom: 0; padding-top: 8px; background: linear-gradient(to top, var(--surface-app) 72%, transparent); }
+
+/* ---- Rebalance ---- */
+.ia-grid-reb { display: grid; grid-template-columns: 1.2fr 1fr; gap: 20px; align-items: start; }
+.ia-reb-row { display: flex; align-items: center; gap: 12px; padding: 11px 0; border-bottom: 1px solid var(--divider); }
+.ia-reb-row:last-of-type { border-bottom: 0; }
+.ia-reb-row__tk { width: 52px; font-weight: 600; color: var(--text-1); font-size: var(--text-sm); }
+.ia-reb-row__cur { width: 50px; text-align: right; color: var(--text-2); font-size: var(--text-sm); }
+.ia-reb-row__tgt { width: 38px; text-align: right; color: var(--accent); font-weight: 600; font-size: var(--text-sm); }
+.ia-reb-bar { position: relative; flex: 1; height: 10px; background: var(--surface-sunken); border-radius: var(--radius-pill); }
+.ia-reb-bar__cur { position: absolute; left: 0; top: 0; height: 100%; background: var(--ink-400); border-radius: var(--radius-pill); }
+.ia-reb-bar__tgt { position: absolute; top: -3px; width: 3px; height: 16px; background: var(--accent); border-radius: 2px; transform: translateX(-50%); }
+.ia-reb-legend { display: flex; gap: 18px; margin-top: 14px; font-size: var(--text-xs); color: var(--text-3); }
+.ia-reb-legend span { display: flex; align-items: center; gap: 6px; }
+.ia-reb-legend .dot { width: 9px; height: 9px; border-radius: 3px; }
+.ia-reb-legend .dot.cur { background: var(--ink-400); }
+.ia-reb-legend .dot.tgt { background: var(--accent); }
+.ia-note { display: flex; gap: 8px; align-items: flex-start; margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--divider); font-size: var(--text-xs); color: var(--text-3); line-height: 1.5; }
+
+/* ---- Calendar ---- */
+.ia-cal-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+
+@media (max-width: 1080px) {
+  .ia-grid-top, .ia-grid-reb { grid-template-columns: 1fr; }
+}

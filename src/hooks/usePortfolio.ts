@@ -34,8 +34,15 @@ const MOCK_ACCOUNTS: AccountSummary[] = [
     equityRows: [
       {
         position: {
-          id: 'p1', accountId: '1', ticker: 'SBER', name: 'Сбербанк', exchange: 'MOEX',
-          currency: 'RUB', quantity: 500, averagePrice: 246.5, averagingMethod: 'WAVG',
+          id: 'p1',
+          accountId: '1',
+          ticker: 'SBER',
+          name: 'Сбербанк',
+          exchange: 'MOEX',
+          currency: 'RUB',
+          quantity: 500,
+          averagePrice: 246.5,
+          averagingMethod: 'WAVG',
           assetType: 'equity',
         },
         currentPrice: 286.2,
@@ -46,8 +53,15 @@ const MOCK_ACCOUNTS: AccountSummary[] = [
       },
       {
         position: {
-          id: 'p2', accountId: '1', ticker: 'LKOH', name: 'Лукойл', exchange: 'MOEX',
-          currency: 'RUB', quantity: 100, averagePrice: 6_820, averagingMethod: 'WAVG',
+          id: 'p2',
+          accountId: '1',
+          ticker: 'LKOH',
+          name: 'Лукойл',
+          exchange: 'MOEX',
+          currency: 'RUB',
+          quantity: 100,
+          averagePrice: 6_820,
+          averagingMethod: 'WAVG',
           assetType: 'equity',
         },
         currentPrice: 7_412,
@@ -60,10 +74,20 @@ const MOCK_ACCOUNTS: AccountSummary[] = [
     bondRows: [
       {
         position: {
-          id: 'p3', accountId: '1', ticker: 'ОФЗ 26238', name: 'ОФЗ 26238',
-          exchange: 'MOEX', currency: 'RUB', quantity: 30, averagePrice: 96.5,
-          averagingMethod: 'WAVG', assetType: 'bond',
-          faceValue: 1000, couponRate: 7.1, couponDates: [], maturityDate: '2041-05-15',
+          id: 'p3',
+          accountId: '1',
+          ticker: 'ОФЗ 26238',
+          name: 'ОФЗ 26238',
+          exchange: 'MOEX',
+          currency: 'RUB',
+          quantity: 30,
+          averagePrice: 96.5,
+          averagingMethod: 'WAVG',
+          assetType: 'bond',
+          faceValue: 1000,
+          couponRate: 7.1,
+          couponDates: [],
+          maturityDate: '2041-05-15',
           accruedInterest: 23.4,
         },
         currentPrice: 88.3,
@@ -92,8 +116,15 @@ const MOCK_ACCOUNTS: AccountSummary[] = [
     equityRows: [
       {
         position: {
-          id: 'p4', accountId: '2', ticker: 'GAZP', name: 'Газпром', exchange: 'MOEX',
-          currency: 'RUB', quantity: 1000, averagePrice: 178.3, averagingMethod: 'WAVG',
+          id: 'p4',
+          accountId: '2',
+          ticker: 'GAZP',
+          name: 'Газпром',
+          exchange: 'MOEX',
+          currency: 'RUB',
+          quantity: 1000,
+          averagePrice: 178.3,
+          averagingMethod: 'WAVG',
           assetType: 'equity',
         },
         currentPrice: 156.4,

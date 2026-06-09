@@ -1,24 +1,19 @@
-import { usePortfolio } from './hooks/usePortfolio'
+﻿import { useState } from 'react'
+import { AppShell, type PageId } from './pages/AppShell'
+import { PortfolioPage } from './pages/PortfolioPage'
+import { AssistantPage } from './pages/AssistantPage'
+import { RebalancePage } from './pages/RebalancePage'
+import { CalendarPage } from './pages/CalendarPage'
 
-// Временная заглушка — Claude Design заменит этот файл на src/pages/PortfolioPage
 export function App() {
-  const { summary, accounts, isLoading, error } = usePortfolio()
-
-  if (isLoading) return <p style={{ padding: 24 }}>Загрузка…</p>
-  if (error) return <p style={{ padding: 24, color: 'crimson' }}>Ошибка: {error}</p>
+  const [page, setPage] = useState<PageId>('dashboard')
 
   return (
-    <main style={{ fontFamily: 'sans-serif', padding: 24 }}>
-      <h1>InvestAnalitic</h1>
-      {summary && (
-        <p>Портфель: {summary.totalValue.toLocaleString('ru-RU')} ₽ · P&L: +{summary.unrealizedPnlPercent}%</p>
-      )}
-      {accounts.map((acc) => (
-        <section key={acc.id}>
-          <h2>{acc.name} ({acc.broker})</h2>
-          <p>{acc.totalValue.toLocaleString('ru-RU')} ₽ · {acc.equityRows.length} акций · {acc.bondRows.length} облигаций</p>
-        </section>
-      ))}
-    </main>
+    <AppShell page={page} onNav={setPage}>
+      {page === 'dashboard' && <PortfolioPage />}
+      {page === 'assistant' && <AssistantPage />}
+      {page === 'rebalance' && <RebalancePage />}
+      {page === 'calendar' && <CalendarPage />}
+    </AppShell>
   )
 }
