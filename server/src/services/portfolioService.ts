@@ -12,6 +12,7 @@ interface DbPosition {
   average_price: string
   averaging_method: string
   last_price: string | null
+  prev_day_price: string | null
   face_value: string | null
   coupon_rate: string | null
   coupon_dates: string[] | null
@@ -97,6 +98,7 @@ export async function getPortfolioSummary(orgId?: string) {
   let totalBondValue = 0
   let totalCost = 0
   let totalUnrealizedPnl = 0
+  let totalDayChange = 0
 
   const accountSummaries = accounts.map((acc) => {
     const accPositions = byAccount.get(acc.id) ?? []
@@ -105,6 +107,7 @@ export async function getPortfolioSummary(orgId?: string) {
     let accValue = 0
     let accPnl = 0
     let accCost = 0
+    let accDayChange = 0
 
     for (const p of accPositions) {
       const qty = Number(p.quantity)
@@ -113,16 +116,24 @@ export async function getPortfolioSummary(orgId?: string) {
       const avgPrice = Number(p.average_price)
       const lastPrice = p.last_price != null ? Number(p.last_price) : avgPrice
 
+      const prevDayPrice = p.prev_day_price != null ? Number(p.prev_day_price) : null
+
       if (p.asset_type === 'equity') {
         const value = qty * lastPrice
         const cost = qty * avgPrice
         const pnl = value - cost
         const pnlPct = cost > 0 ? (pnl / cost) * 100 : 0
+        const dayChange = prevDayPrice != null ? Math.round((lastPrice - prevDayPrice) * qty * 100) / 100 : null
+        const dayChangePct = prevDayPrice != null && prevDayPrice !== 0
+          ? Math.round(((lastPrice - prevDayPrice) / prevDayPrice) * 10000) / 100
+          : null
         accValue += value
         accPnl += pnl
         accCost += cost
+        accDayChange += dayChange ?? 0
         totalEquityValue += value
         totalCost += cost
+        totalDayChange += dayChange ?? 0
 
         equityRows.push({
           position: {
@@ -142,6 +153,8 @@ export async function getPortfolioSummary(orgId?: string) {
           investedValue: cost,
           unrealizedPnl: pnl,
           unrealizedPnlPercent: Math.round(pnlPct * 100) / 100,
+          dayChange,
+          dayChangePercent: dayChangePct,
           portfolioWeight: 0,
         })
       } else if (p.asset_type === 'bond') {
@@ -150,11 +163,18 @@ export async function getPortfolioSummary(orgId?: string) {
         const cost = qty * (avgPrice / 100) * faceValue
         const pnl = value - cost
         const pnlPct = cost > 0 ? (pnl / cost) * 100 : 0
+        const prevDayValue = prevDayPrice != null ? qty * (prevDayPrice / 100) * faceValue : null
+        const dayChange = prevDayValue != null ? Math.round((value - prevDayValue) * 100) / 100 : null
+        const dayChangePct = prevDayPrice != null && prevDayPrice !== 0
+          ? Math.round(((lastPrice - prevDayPrice) / prevDayPrice) * 10000) / 100
+          : null
         accValue += value
         accPnl += pnl
         accCost += cost
+        accDayChange += dayChange ?? 0
         totalBondValue += value
         totalCost += cost
+        totalDayChange += dayChange ?? 0
 
         const couponRate = p.coupon_rate != null ? Number(p.coupon_rate) : 0
         const ytm = p.maturity_date
@@ -187,6 +207,8 @@ export async function getPortfolioSummary(orgId?: string) {
           daysToMaturity: days,
           unrealizedPnl: pnl,
           unrealizedPnlPercent: Math.round(pnlPct * 100) / 100,
+          dayChange,
+          dayChangePercent: dayChangePct,
           portfolioWeight: 0,
         })
       }
@@ -205,6 +227,7 @@ export async function getPortfolioSummary(orgId?: string) {
       investedValue: Math.round(accCost * 100) / 100,
       unrealizedPnl: Math.round(accPnl * 100) / 100,
       unrealizedPnlPercent: accPnlPct,
+      dayChange: Math.round(accDayChange * 100) / 100,
       portfolioWeight: 0,
       equityRows,
       bondRows,
@@ -230,6 +253,7 @@ export async function getPortfolioSummary(orgId?: string) {
   return {
     totalValue: Math.round(totalValue * 100) / 100,
     investedValue: Math.round(totalCost * 100) / 100,
+    dayChange: Math.round(totalDayChange * 100) / 100,
     equityValue: Math.round(totalEquityValue * 100) / 100,
     bondValue: Math.round(totalBondValue * 100) / 100,
     cashValue: 0,

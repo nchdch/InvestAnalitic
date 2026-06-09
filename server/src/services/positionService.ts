@@ -15,6 +15,7 @@ function toRow(r: Record<string, unknown>) {
     averagingMethod: r.averaging_method,
     lastPrice: r.last_price != null ? Number(r.last_price) : null,
     lastPriceUpdatedAt: r.last_price_updated_at ?? null,
+    prevDayPrice: r.prev_day_price != null ? Number(r.prev_day_price) : null,
     // bond fields
     faceValue: r.face_value != null ? Number(r.face_value) : undefined,
     couponRate: r.coupon_rate != null ? Number(r.coupon_rate) : undefined,
@@ -96,7 +97,14 @@ export async function updatePosition(id: string, patch: Partial<CreatePositionIn
   if (patch.name !== undefined) add('name', patch.name)
   if (patch.quantity !== undefined) add('quantity', patch.quantity)
   if (patch.averagePrice !== undefined) add('average_price', patch.averagePrice)
-  if (patch.lastPrice !== undefined) { add('last_price', patch.lastPrice); add('last_price_updated_at', new Date()) }
+  if (patch.lastPrice !== undefined) {
+    // Если предыдущая цена обновлялась в другой день — переносим её в prev_day_price
+    fields.push(
+      `prev_day_price = CASE WHEN last_price IS NOT NULL AND last_price_updated_at::date < CURRENT_DATE THEN last_price ELSE prev_day_price END`
+    )
+    add('last_price', patch.lastPrice)
+    add('last_price_updated_at', new Date())
+  }
   if (patch.couponRate !== undefined) add('coupon_rate', patch.couponRate)
   if (patch.maturityDate !== undefined) add('maturity_date', patch.maturityDate)
   if (patch.accruedInterest !== undefined) add('accrued_interest', patch.accruedInterest)

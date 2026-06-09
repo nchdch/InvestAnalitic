@@ -60,11 +60,12 @@ function SummaryReportTable({ accounts, totalValue }: { accounts: AccountSummary
     <table className="ia-table">
       <thead>
         <tr>
-          <th style={{ width: '35%' }}>Название</th>
+          <th style={{ width: '32%' }}>Название</th>
           <th style={colStyle}>Стоимость</th>
           <th style={colStyle}>Инвестировано</th>
           <th style={colStyle}>Прибыль, ₽</th>
           <th style={colStyle}>Прибыль, %</th>
+          <th style={colStyle}>Изм. за день</th>
           <th style={colStyle}>Доля, %</th>
         </tr>
       </thead>
@@ -74,9 +75,13 @@ function SummaryReportTable({ accounts, totalValue }: { accounts: AccountSummary
           const equityValue = acc.equityRows.reduce((s, r) => s + r.currentValue, 0)
           const equityInvested = acc.equityRows.reduce((s, r) => s + r.investedValue, 0)
           const equityPnl = acc.equityRows.reduce((s, r) => s + r.unrealizedPnl, 0)
+          const equityDayChange = acc.equityRows.some((r) => r.dayChange != null)
+            ? acc.equityRows.reduce((s, r) => s + (r.dayChange ?? 0), 0) : null
           const bondValue = acc.bondRows.reduce((s, r) => s + r.currentValue, 0)
           const bondInvested = acc.bondRows.reduce((s, r) => s + r.investedValue, 0)
           const bondPnl = acc.bondRows.reduce((s, r) => s + r.unrealizedPnl, 0)
+          const bondDayChange = acc.bondRows.some((r) => r.dayChange != null)
+            ? acc.bondRows.reduce((s, r) => s + (r.dayChange ?? 0), 0) : null
           const accShare = totalValue > 0 ? (acc.totalValue / totalValue) * 100 : 0
 
           return (
@@ -102,6 +107,11 @@ function SummaryReportTable({ accounts, totalValue }: { accounts: AccountSummary
                 <td className="r">
                   <PnLValue percent={acc.unrealizedPnlPercent} display="percent" size="sm" />
                 </td>
+                <td className="r">
+                  {acc.dayChange !== 0
+                    ? <PnLValue value={acc.dayChange} display="money" size="sm" />
+                    : <span style={{ color: 'var(--text-4)' }}>—</span>}
+                </td>
                 <td className="r ia-num" style={{ color: 'var(--text-3)' }}>{RUB.format(accShare)}%</td>
               </tr>
 
@@ -117,6 +127,11 @@ function SummaryReportTable({ accounts, totalValue }: { accounts: AccountSummary
                   <td className="r">
                     {equityInvested > 0
                       ? <PnLValue percent={(equityPnl / equityInvested) * 100} display="percent" size="sm" />
+                      : <span style={{ color: 'var(--text-4)' }}>—</span>}
+                  </td>
+                  <td className="r">
+                    {equityDayChange != null
+                      ? <PnLValue value={equityDayChange} display="money" size="sm" />
                       : <span style={{ color: 'var(--text-4)' }}>—</span>}
                   </td>
                   <td className="r ia-num" style={{ color: 'var(--text-3)' }}>
@@ -139,6 +154,11 @@ function SummaryReportTable({ accounts, totalValue }: { accounts: AccountSummary
                       ? <PnLValue percent={(bondPnl / bondInvested) * 100} display="percent" size="sm" />
                       : <span style={{ color: 'var(--text-4)' }}>—</span>}
                   </td>
+                  <td className="r">
+                    {bondDayChange != null
+                      ? <PnLValue value={bondDayChange} display="money" size="sm" />
+                      : <span style={{ color: 'var(--text-4)' }}>—</span>}
+                  </td>
                   <td className="r ia-num" style={{ color: 'var(--text-3)' }}>
                     {totalValue > 0 ? RUB.format((bondValue / totalValue) * 100) : '0,00'}%
                   </td>
@@ -150,6 +170,7 @@ function SummaryReportTable({ accounts, totalValue }: { accounts: AccountSummary
                 <tr key={acc.id + '-cash'} style={{ background: 'transparent' }}>
                   <td style={{ paddingLeft: 36, color: 'var(--text-2)' }}>→ Денежные средства</td>
                   <td className="r ia-num">{money(acc.cashRows.reduce((s: number, r: { rubEquivalent: number }) => s + r.rubEquivalent, 0))}</td>
+                  <td className="r ia-num" style={{ color: 'var(--text-4)' }}>—</td>
                   <td className="r ia-num" style={{ color: 'var(--text-4)' }}>—</td>
                   <td className="r ia-num" style={{ color: 'var(--text-4)' }}>—</td>
                   <td className="r ia-num" style={{ color: 'var(--text-4)' }}>—</td>
@@ -186,6 +207,7 @@ function AllAssetsTable({ accounts }: { accounts: AccountSummary[] }) {
           <th style={{ textAlign: 'right' }}>Стоимость</th>
           <th style={{ textAlign: 'right' }}>Инвестировано</th>
           <th style={{ textAlign: 'right' }}>Прибыль</th>
+          <th style={{ textAlign: 'right' }}>Изм. за день</th>
           <th style={{ textAlign: 'right' }}>Вес</th>
           <th>Счёт</th>
         </tr>
@@ -217,6 +239,11 @@ function AllAssetsTable({ accounts }: { accounts: AccountSummary[] }) {
                 {pnl !== 0
                   ? <PnLValue value={pnl} percent={pnlPct} display="both" size="sm" />
                   : <span style={{ color: 'var(--text-4)', fontSize: 'var(--text-xs)' }}>нет цены</span>}
+              </td>
+              <td className="r">
+                {row.dayChange != null
+                  ? <PnLValue value={row.dayChange} percent={row.dayChangePercent ?? undefined} display="both" size="sm" />
+                  : <span style={{ color: 'var(--text-4)', fontSize: 'var(--text-xs)' }}>—</span>}
               </td>
               <td className="r ia-num" style={{ color: 'var(--text-3)' }}>{row.portfolioWeight.toFixed(1)}%</td>
               <td style={{ color: 'var(--text-3)', fontSize: 'var(--text-xs)' }}>{row.accountName}</td>
@@ -276,12 +303,16 @@ export function PortfolioPage() {
               <div className="ia-summ-v ia-num">{money(summary.investedValue)}</div>
             </div>
             <div>
-              <div className="ia-summ-k">Акции</div>
-              <div className="ia-summ-v ia-num">{money(summary.equityValue)}</div>
+              <div className="ia-summ-k">Изм. за день</div>
+              <div className="ia-summ-v">
+                {summary.dayChange !== 0
+                  ? <PnLValue value={summary.dayChange} display="money" size="md" />
+                  : <span className="ia-num" style={{ color: 'var(--text-3)' }}>—</span>}
+              </div>
             </div>
             <div>
-              <div className="ia-summ-k">Облигации</div>
-              <div className="ia-summ-v ia-num">{money(summary.bondValue)}</div>
+              <div className="ia-summ-k">Акции</div>
+              <div className="ia-summ-v ia-num">{money(summary.equityValue)}</div>
             </div>
           </div>
           <div style={{ marginTop: 18 }}>
@@ -368,6 +399,7 @@ export function PortfolioPage() {
                     <th className="r">Стоимость</th>
                     <th className="r">Инвестировано</th>
                     <th className="r">P&L</th>
+                    <th className="r">Изм. за день</th>
                     <th className="r">Вес</th>
                   </tr>
                 </thead>
@@ -393,6 +425,11 @@ export function PortfolioPage() {
                           ? <PnLValue value={row.unrealizedPnl} percent={row.unrealizedPnlPercent} display="both" size="sm" />
                           : <span style={{ color: 'var(--text-4)', fontSize: 'var(--text-xs)' }}>нет цены</span>}
                       </td>
+                      <td className="r">
+                        {row.dayChange != null
+                          ? <PnLValue value={row.dayChange} percent={row.dayChangePercent ?? undefined} display="both" size="sm" />
+                          : <span style={{ color: 'var(--text-4)', fontSize: 'var(--text-xs)' }}>—</span>}
+                      </td>
                       <td className="r ia-num" style={{ color: 'var(--text-3)' }}>{row.portfolioWeight.toFixed(1)}%</td>
                     </tr>
                   ))}
@@ -412,6 +449,7 @@ export function PortfolioPage() {
                     <th className="r">Стоимость</th>
                     <th className="r">Инвестировано</th>
                     <th className="r">Прибыль</th>
+                    <th className="r">Изм. за день</th>
                     <th className="r">Купон %</th>
                     <th className="r">YTM</th>
                     <th>Погашение</th>
@@ -436,6 +474,11 @@ export function PortfolioPage() {
                         {row.unrealizedPnl !== 0
                           ? <PnLValue value={row.unrealizedPnl} percent={row.unrealizedPnlPercent} display="both" size="sm" />
                           : <span style={{ color: 'var(--text-4)', fontSize: 'var(--text-xs)' }}>нет цены</span>}
+                      </td>
+                      <td className="r">
+                        {row.dayChange != null
+                          ? <PnLValue value={row.dayChange} percent={row.dayChangePercent ?? undefined} display="both" size="sm" />
+                          : <span style={{ color: 'var(--text-4)', fontSize: 'var(--text-xs)' }}>—</span>}
                       </td>
                       <td className="r ia-num">{row.position.couponRate != null ? row.position.couponRate.toFixed(2) + '%' : '—'}</td>
                       <td className="r">

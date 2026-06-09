@@ -10,6 +10,8 @@ export interface EquityRow {
   investedValue: number
   unrealizedPnl: number
   unrealizedPnlPercent: number
+  dayChange: number | null
+  dayChangePercent: number | null
   portfolioWeight: number
 }
 
@@ -23,6 +25,8 @@ export interface BondRow {
   daysToMaturity: number | null
   unrealizedPnl: number
   unrealizedPnlPercent: number
+  dayChange: number | null
+  dayChangePercent: number | null
   portfolioWeight: number
 }
 
@@ -42,6 +46,7 @@ export interface AccountSummary {
   investedValue: number
   unrealizedPnl: number
   unrealizedPnlPercent: number
+  dayChange: number
   portfolioWeight: number
   equityRows: EquityRow[]
   bondRows: BondRow[]
@@ -52,6 +57,7 @@ export interface AccountSummary {
 export interface PortfolioSummary {
   totalValue: number
   investedValue: number
+  dayChange: number
   equityValue: number
   bondValue: number
   cashValue: number
