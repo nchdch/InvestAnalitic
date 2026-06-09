@@ -2,7 +2,7 @@
 import { useNavigate } from 'react-router-dom'
 import logoMark from '../assets/logo-mark.svg'
 import { Button, IconButton, Avatar } from '../components'
-import { LayoutDashboard, Sparkles, Scale, Calendar, Plus, Bell, Search, Settings, LogOut, Building2, ChevronDown, ChevronUp, RefreshCw } from 'lucide-react'
+import { LayoutDashboard, Sparkles, Scale, Calendar, Plus, Bell, Search, Settings, LogOut, Building2, ChevronDown, ChevronUp } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { usePortfolio } from '../hooks/usePortfolio'
 import { useAuthStore } from '../store/authStore'
@@ -53,23 +53,12 @@ export function AppShell({ page, onNav, onAddTrade, children }: Props) {
 
   const [orgOpen, setOrgOpen] = useState(false)
   const dropdownRef = useRef<HTMLDivElement>(null)
-  const [refreshingPrices, setRefreshingPrices] = useState(false)
-
-  const handleRefreshPrices = async () => {
-    setRefreshingPrices(true)
-    try {
-      await refreshPrices()
-      bump()
-    } catch {
-      // молча игнорируем — котировки обновятся при следующей попытке
-    } finally {
-      setRefreshingPrices(false)
-    }
-  }
 
   // Подтягиваем актуальные котировки при каждом обновлении страницы
   useEffect(() => {
-    handleRefreshPrices()
+    refreshPrices().then(bump).catch(() => {
+      // молча игнорируем — котировки обновятся при следующей попытке
+    })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -180,16 +169,6 @@ export function AppShell({ page, onNav, onAddTrade, children }: Props) {
               <input placeholder="Поиск тикера, эмитента…" />
             </div>
             <IconButton variant="outlined" label="Уведомления"><Bell size={18} /></IconButton>
-            {page === 'dashboard' && (
-              <Button
-                variant="secondary"
-                leftIcon={<RefreshCw size={16} />}
-                loading={refreshingPrices}
-                onClick={handleRefreshPrices}
-              >
-                Обновить котировки
-              </Button>
-            )}
             <Button leftIcon={<Plus size={18} />} onClick={onAddTrade}>Добавить сделку</Button>
           </div>
         </header>
