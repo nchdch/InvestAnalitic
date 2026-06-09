@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import React, { useState } from 'react'
 import { Card, StatCard, PnLValue, Badge, AllocationBar, Avatar, Tabs, Button, IconButton, Select } from '../components'
 import { Sparkles, Download, PackageOpen, ChevronDown, ChevronRight } from 'lucide-react'
 import { usePortfolio } from '../hooks/usePortfolio'
