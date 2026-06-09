@@ -43,6 +43,7 @@ export interface CreateTradeInput {
   exchange?: string
   assetType?: 'equity' | 'bond'
   name?: string
+  exchangeRate?: number
 }
 
 export async function createTrade(input: CreateTradeInput) {
@@ -73,6 +74,7 @@ export async function createTrade(input: CreateTradeInput) {
         input.currency,
         input.assetType ?? 'equity',
         input.name,
+        input.exchangeRate,
       )
     } else {
       await applySellToPosition(client, input.accountId, input.ticker, input.quantity)

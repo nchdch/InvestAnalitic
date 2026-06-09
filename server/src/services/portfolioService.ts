@@ -11,6 +11,7 @@ interface DbPosition {
   quantity: string
   average_price: string
   averaging_method: string
+  exchange_rate: string | null
   last_price: string | null
   prev_day_price: string | null
   face_value: string | null
@@ -115,15 +116,16 @@ export async function getPortfolioSummary(orgId?: string) {
 
       const avgPrice = Number(p.average_price)
       const lastPrice = p.last_price != null ? Number(p.last_price) : avgPrice
+      const fxRate = p.exchange_rate != null ? Number(p.exchange_rate) : 1
 
       const prevDayPrice = p.prev_day_price != null ? Number(p.prev_day_price) : null
 
       if (p.asset_type === 'equity') {
-        const value = qty * lastPrice
-        const cost = qty * avgPrice
+        const value = qty * lastPrice * fxRate
+        const cost = qty * avgPrice * fxRate
         const pnl = value - cost
         const pnlPct = cost > 0 ? (pnl / cost) * 100 : 0
-        const dayChange = prevDayPrice != null ? Math.round((lastPrice - prevDayPrice) * qty * 100) / 100 : null
+        const dayChange = prevDayPrice != null ? Math.round((lastPrice - prevDayPrice) * qty * fxRate * 100) / 100 : null
         const dayChangePct = prevDayPrice != null && prevDayPrice !== 0
           ? Math.round(((lastPrice - prevDayPrice) / prevDayPrice) * 10000) / 100
           : null
@@ -159,11 +161,11 @@ export async function getPortfolioSummary(orgId?: string) {
         })
       } else if (p.asset_type === 'bond') {
         const faceValue = p.face_value != null ? Number(p.face_value) : 1000
-        const value = qty * (lastPrice / 100) * faceValue
-        const cost = qty * (avgPrice / 100) * faceValue
+        const value = qty * (lastPrice / 100) * faceValue * fxRate
+        const cost = qty * (avgPrice / 100) * faceValue * fxRate
         const pnl = value - cost
         const pnlPct = cost > 0 ? (pnl / cost) * 100 : 0
-        const prevDayValue = prevDayPrice != null ? qty * (prevDayPrice / 100) * faceValue : null
+        const prevDayValue = prevDayPrice != null ? qty * (prevDayPrice / 100) * faceValue * fxRate : null
         const dayChange = prevDayValue != null ? Math.round((value - prevDayValue) * 100) / 100 : null
         const dayChangePct = prevDayPrice != null && prevDayPrice !== 0
           ? Math.round(((lastPrice - prevDayPrice) / prevDayPrice) * 10000) / 100

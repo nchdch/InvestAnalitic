@@ -71,6 +71,7 @@ interface FormState {
   price: string
   fee: string
   currency: string
+  exchangeRate: string
   executedAt: string
 }
 
@@ -84,6 +85,7 @@ const EMPTY: FormState = {
   price: '',
   fee: '',
   currency: 'RUB',
+  exchangeRate: '',
   executedAt: today(),
 }
 
@@ -124,9 +126,11 @@ export function TradeModal({ open, onClose }: Props) {
 
     const qty = Number(form.quantity)
     const price = Number(form.price)
+    const exchangeRate = form.currency !== 'RUB' ? Number(form.exchangeRate) : 1
     if (!form.ticker.trim()) return setError('Введите тикер')
     if (!qty || qty <= 0) return setError('Количество должно быть больше 0')
     if (!price || price <= 0) return setError('Цена должна быть больше 0')
+    if (form.currency !== 'RUB' && (!exchangeRate || exchangeRate <= 0)) return setError(`Введите курс ${form.currency} к ₽`)
 
     setSubmitting(true)
     try {
@@ -148,6 +152,7 @@ export function TradeModal({ open, onClose }: Props) {
         price,
         fee: Number(form.fee) || 0,
         currency: form.currency,
+        exchangeRate: form.currency !== 'RUB' ? exchangeRate : undefined,
         assetType: form.assetType,
         executedAt: form.executedAt ? new Date(form.executedAt).toISOString() : undefined,
       })
@@ -299,11 +304,28 @@ export function TradeModal({ open, onClose }: Props) {
               <Select
                 label="Валюта"
                 value={form.currency}
-                onChange={(e) => set('currency', e.target.value)}
+                onChange={(e) => {
+                  set('currency', e.target.value)
+                  if (e.target.value === 'RUB') set('exchangeRate', '')
+                }}
               >
                 {CURRENCIES.map((c) => <option key={c} value={c}>{c}</option>)}
               </Select>
             </div>
+
+            {/* Курс валюты — только для не-рублёвых позиций */}
+            {form.currency !== 'RUB' && (
+              <Input
+                label={`Курс ${form.currency} к ₽`}
+                type="number"
+                min="0"
+                step="any"
+                placeholder={form.currency === 'USD' ? '91.50' : form.currency === 'EUR' ? '98.00' : '12.50'}
+                value={form.exchangeRate}
+                onChange={(e) => set('exchangeRate', e.target.value)}
+                required
+              />
+            )}
 
             {/* Дата */}
             <Input

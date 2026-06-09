@@ -60,6 +60,7 @@ export interface CreatePositionInput {
   quantity: number
   averagePrice: number
   averagingMethod?: string
+  exchangeRate?: number
   faceValue?: number
   couponRate?: number
   couponDates?: string[]
@@ -71,14 +72,15 @@ export async function createPosition(input: CreatePositionInput) {
   const { rows } = await pool.query(
     `INSERT INTO positions
       (account_id, ticker, isin, name, exchange, asset_type, currency, quantity,
-       average_price, averaging_method, face_value, coupon_rate, coupon_dates,
+       average_price, averaging_method, exchange_rate, face_value, coupon_rate, coupon_dates,
        maturity_date, accrued_interest)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)
      RETURNING *`,
     [
       input.accountId, input.ticker, input.isin ?? null, input.name ?? null,
       input.exchange, input.assetType, input.currency, input.quantity,
       input.averagePrice, input.averagingMethod ?? 'WAVG',
+      input.exchangeRate ?? 1,
       input.faceValue ?? null, input.couponRate ?? null,
       input.couponDates ? JSON.stringify(input.couponDates) : null,
       input.maturityDate ?? null, input.accruedInterest ?? null,
@@ -137,6 +139,7 @@ export async function applyBuyToPosition(
   currency: string,
   assetType: 'equity' | 'bond',
   tradeName?: string,
+  exchangeRate?: number,
 ) {
   const { rows } = await client.query(
     'SELECT * FROM positions WHERE account_id = $1 AND ticker = $2 FOR UPDATE',
@@ -144,12 +147,11 @@ export async function applyBuyToPosition(
   )
 
   if (rows.length === 0) {
-    // Позиция не существует — создаём
     await client.query(
       `INSERT INTO positions
-        (account_id, ticker, name, exchange, asset_type, currency, quantity, average_price, averaging_method)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'WAVG')`,
-      [accountId, ticker, tradeName ?? ticker, exchange, assetType, currency, tradeQuantity, tradePrice]
+        (account_id, ticker, name, exchange, asset_type, currency, quantity, average_price, averaging_method, exchange_rate)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'WAVG', $9)`,
+      [accountId, ticker, tradeName ?? ticker, exchange, assetType, currency, tradeQuantity, tradePrice, exchangeRate ?? 1]
     )
   } else {
     const pos = rows[0]
@@ -158,8 +160,8 @@ export async function applyBuyToPosition(
     const newQty = oldQty + tradeQuantity
     const newAvg = (oldQty * oldAvg + tradeQuantity * tradePrice) / newQty
     await client.query(
-      'UPDATE positions SET quantity = $1, average_price = $2, updated_at = NOW() WHERE id = $3',
-      [newQty, newAvg, pos.id]
+      'UPDATE positions SET quantity = $1, average_price = $2, exchange_rate = $3, updated_at = NOW() WHERE id = $4',
+      [newQty, newAvg, exchangeRate ?? Number(pos.exchange_rate) ?? 1, pos.id]
     )
   }
 }

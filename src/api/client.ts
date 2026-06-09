@@ -95,6 +95,7 @@ export interface CreateTradeInput {
   exchange?: string
   assetType?: 'equity' | 'bond'
   name?: string
+  exchangeRate?: number
 }
 export function getTrades(accountId?: string, ticker?: string): Promise<Trade[]> {
   const params = new URLSearchParams()
