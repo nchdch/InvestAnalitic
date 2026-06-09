@@ -4,6 +4,8 @@ import { Button, Input, Select } from '../index'
 import { injectOnce } from '../_internal/style'
 import { getAccounts, createAccount, createTrade } from '../../api/client'
 import { usePortfolioStore } from '../../store/portfolioStore'
+import { SecuritySearchInput } from './SecuritySearchInput'
+import type { SecuritySearchResult } from '../../api/client'
 import type { Account } from '@/types'
 
 const CSS = `
@@ -248,23 +250,16 @@ export function TradeModal({ open, onClose }: Props) {
               </div>
             </div>
 
-            {/* Тикер + название */}
-            <div className="ia-field-row">
-              <Input
-                label="Тикер"
-                placeholder="SBER"
-                value={form.ticker}
-                onChange={(e) => set('ticker', e.target.value.toUpperCase())}
-                required
-                style={{ fontFamily: 'var(--font-mono)', textTransform: 'uppercase' } as React.CSSProperties}
-              />
-              <Input
-                label="Название (необязательно)"
-                placeholder="Сбербанк"
-                value={form.name}
-                onChange={(e) => set('name', e.target.value)}
-              />
-            </div>
+            {/* Поиск бумаги */}
+            <SecuritySearchInput
+              selectedTicker={form.ticker}
+              onSelect={(s: SecuritySearchResult) => {
+                set('ticker', s.ticker)
+                set('name', s.shortName)
+                if (s.assetType) set('assetType', s.assetType)
+                set('currency', s.currency)
+              }}
+            />
 
             {/* Кол-во + цена */}
             <div className="ia-field-row">

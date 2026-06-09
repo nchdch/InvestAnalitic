@@ -129,6 +129,21 @@ export function getPaymentStats(accountId?: string): Promise<{ totalGross: numbe
   return request(`/payments/stats${q}`)
 }
 
+// Securities search
+export interface SecuritySearchResult {
+  ticker: string
+  shortName: string
+  fullName: string
+  isin: string | null
+  assetType: 'equity' | 'bond' | null
+  currency: 'RUB' | 'USD' | 'EUR'
+  exchange: string
+  isTraded: boolean
+}
+export function searchSecurities(q: string): Promise<SecuritySearchResult[]> {
+  return request<SecuritySearchResult[]>(`/securities/search?q=${encodeURIComponent(q)}`)
+}
+
 // Portfolio
 export function getPortfolioSummary(): Promise<PortfolioResponse> {
   const orgId = activeOrgId()
