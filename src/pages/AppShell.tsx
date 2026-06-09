@@ -2,7 +2,7 @@
 import { useNavigate } from 'react-router-dom'
 import logoMark from '../assets/logo-mark.svg'
 import { Button, IconButton, Avatar } from '../components'
-import { LayoutDashboard, Sparkles, Scale, Calendar, Plus, Bell, Search, Settings, LogOut, Building2, ChevronDown, ChevronUp } from 'lucide-react'
+import { LayoutDashboard, Sparkles, Scale, Calendar, Plus, Bell, Search, Settings, LogOut, Building2, ChevronDown, ChevronUp, ArrowUpRight, ArrowDownRight, Layers } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { usePortfolio } from '../hooks/usePortfolio'
 import { useAuthStore } from '../store/authStore'
@@ -51,6 +51,8 @@ export function AppShell({ page, onNav, onAddTrade, onAddPortfolio, children }: 
   const { orgs, activeOrg, setActiveOrg, clearOrgs } = useOrgStore()
   const navigate = useNavigate()
   const bump = usePortfolioStore((s) => s.bump)
+  const selectedAccountId = usePortfolioStore((s) => s.selectedAccountId)
+  const setSelectedAccountId = usePortfolioStore((s) => s.setSelectedAccountId)
 
   const [orgOpen, setOrgOpen] = useState(false)
   const dropdownRef = useRef<HTMLDivElement>(null)
@@ -136,15 +138,39 @@ export function AppShell({ page, onNav, onAddTrade, onAddPortfolio, children }: 
 
         <div className="ia-sidebar__accounts">
           <div className="ia-eyebrow" style={{ padding: '0 4px 8px' }}>Портфели</div>
-          {accounts.map((a) => (
-            <div key={a.id} className="ia-acctmini">
-              <Avatar name={a.name} size="sm" />
+          {accounts.length > 1 && (
+            <button
+              className={'ia-acctmini' + (selectedAccountId === null ? ' is-active' : '')}
+              onClick={() => setSelectedAccountId(null)}
+            >
+              <span className="ia-acctmini__icon"><Layers size={14} /></span>
               <div className="ia-acctmini__txt">
-                <div className="ia-acctmini__name">{a.name}</div>
-                <div className="ia-acctmini__val ia-num">{RUB.format(a.totalValue)} ₽</div>
+                <div className="ia-acctmini__name">Все портфели</div>
               </div>
-            </div>
-          ))}
+            </button>
+          )}
+          {accounts.map((a) => {
+            const isActive = selectedAccountId === a.id
+            const isProfit = a.unrealizedPnl >= 0
+            return (
+              <button
+                key={a.id}
+                className={'ia-acctmini' + (isActive ? ' is-active' : '')}
+                onClick={() => setSelectedAccountId(a.id)}
+              >
+                <Avatar name={a.name} size="sm" />
+                <div className="ia-acctmini__txt">
+                  <div className="ia-acctmini__name">{a.name}</div>
+                  <div className="ia-acctmini__val ia-num">
+                    {isProfit
+                      ? <ArrowUpRight size={12} className="ia-acctmini__pnl ia-acctmini__pnl--up" />
+                      : <ArrowDownRight size={12} className="ia-acctmini__pnl ia-acctmini__pnl--down" />}
+                    {RUB.format(a.totalValue)} ₽
+                  </div>
+                </div>
+              </button>
+            )
+          })}
           <button className="ia-navitem ia-navitem--ghost" onClick={onAddPortfolio}>
             <Plus size={16} /><span>Добавить портфель</span>
           </button>

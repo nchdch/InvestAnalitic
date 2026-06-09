@@ -1,5 +1,5 @@
-import React, { useState } from 'react'
-import { Card, StatCard, PnLValue, Badge, AllocationBar, Avatar, Tabs, Button, IconButton, Select } from '../components'
+import React, { useEffect, useState } from 'react'
+import { Card, StatCard, PnLValue, Badge, AllocationBar, Avatar, Tabs, Button, IconButton } from '../components'
 import { Sparkles, Download, PackageOpen, ChevronDown, ChevronRight } from 'lucide-react'
 import { usePortfolio } from '../hooks/usePortfolio'
 import { usePortfolioStore } from '../store/portfolioStore'
@@ -335,60 +335,82 @@ function AllAssetsTable({ accounts }: { accounts: AccountSummary[] }) {
 
 export function PortfolioPage() {
   const [tab, setTab] = useState('summary')
-  const [equityAccountFilter, setEquityAccountFilter] = useState('all')
   const { summary, accounts, isLoading } = usePortfolio()
+  const selectedAccountId = usePortfolioStore((s) => s.selectedAccountId)
+  const setSelectedAccountId = usePortfolioStore((s) => s.setSelectedAccountId)
+
+  useEffect(() => {
+    if (selectedAccountId && !accounts.some((a) => a.id === selectedAccountId)) {
+      setSelectedAccountId(null)
+    }
+  }, [accounts, selectedAccountId, setSelectedAccountId])
 
   if (isLoading) return <div className="ia-screen"><Spinner /></div>
 
   const hasPositions = accounts.some((a) => a.equityRows.length + a.bondRows.length > 0)
   if (!summary || !hasPositions) return <div className="ia-screen"><EmptyState /></div>
 
-  const filteredAccounts = equityAccountFilter === 'all'
-    ? accounts
-    : accounts.filter((a) => a.id === equityAccountFilter)
+  const selectedAccount = selectedAccountId ? accounts.find((a) => a.id === selectedAccountId) ?? null : null
+  const filteredAccounts = selectedAccount ? [selectedAccount] : accounts
 
   const allEquities = filteredAccounts.flatMap((a) => a.equityRows)
   const allBonds = filteredAccounts.flatMap((a) => a.bondRows)
   const allCash = filteredAccounts.flatMap((a) => a.cashRows)
 
+  const viewSummary = selectedAccount
+    ? {
+        ...summary,
+        totalValue: selectedAccount.totalValue,
+        investedValue: selectedAccount.investedValue,
+        dayChange: selectedAccount.dayChange,
+        equityValue: allEquities.reduce((s, r) => s + r.currentValue, 0),
+        bondValue: allBonds.reduce((s, r) => s + r.currentValue, 0),
+        cashValue: allCash.reduce((s, r) => s + r.rubEquivalent, 0),
+        unrealizedPnl: selectedAccount.unrealizedPnl,
+        unrealizedPnlPercent: selectedAccount.unrealizedPnlPercent,
+      }
+    : summary
+
   const allocSegments = [
-    { label: 'Акции', value: summary.equityValue },
-    { label: 'Облигации', value: summary.bondValue },
-    { label: 'Деньги', value: summary.cashValue },
+    { label: 'Акции', value: viewSummary.equityValue },
+    { label: 'Облигации', value: viewSummary.bondValue },
+    { label: 'Деньги', value: viewSummary.cashValue },
   ]
 
-  const totalEquities = accounts.flatMap((a) => a.equityRows)
+  const totalEquities = filteredAccounts.flatMap((a) => a.equityRows)
 
   return (
     <div className="ia-screen">
       {/* Верхний блок: Сводка + ИИ-аналитик */}
       <div className="ia-grid-top">
         <Card>
-          <div className="ia-eyebrow" style={{ marginBottom: 10 }}>Сводка портфеля</div>
+          <div className="ia-eyebrow" style={{ marginBottom: 10 }}>
+            {selectedAccount ? `Портфель «${selectedAccount.name}»` : 'Сводка портфеля'}
+          </div>
           <StatCard
             size="xl"
             label="Стоимость"
-            value={money(summary.totalValue)}
-            delta={summary.unrealizedPnl}
-            deltaPercent={summary.unrealizedPnlPercent}
+            value={money(viewSummary.totalValue)}
+            delta={viewSummary.unrealizedPnl}
+            deltaPercent={viewSummary.unrealizedPnlPercent}
             caption="нереализованный P&L"
           />
           <div className="ia-summ-row">
             <div>
               <div className="ia-summ-k">Инвестировано</div>
-              <div className="ia-summ-v ia-num">{money(summary.investedValue)}</div>
+              <div className="ia-summ-v ia-num">{money(viewSummary.investedValue)}</div>
             </div>
             <div>
               <div className="ia-summ-k">Изм. за день</div>
               <div className="ia-summ-v">
-                {summary.dayChange !== 0
-                  ? <PnLValue value={summary.dayChange} display="money" size="md" />
+                {viewSummary.dayChange !== 0
+                  ? <PnLValue value={viewSummary.dayChange} display="money" size="md" />
                   : <span className="ia-num" style={{ color: 'var(--text-3)' }}>—</span>}
               </div>
             </div>
             <div>
               <div className="ia-summ-k">Акции</div>
-              <div className="ia-summ-v ia-num">{money(summary.equityValue)}</div>
+              <div className="ia-summ-v ia-num">{money(viewSummary.equityValue)}</div>
             </div>
           </div>
           <div style={{ marginTop: 18 }}>
@@ -434,26 +456,20 @@ export function PortfolioPage() {
             onChange={setTab}
             items={[
               { value: 'summary', label: 'Сводный отчёт' },
-              { value: 'all', label: 'Все активы', count: accounts.flatMap((a) => [...a.equityRows, ...a.bondRows]).length },
-              { value: 'eq', label: 'Акции', count: accounts.flatMap((a) => a.equityRows).length },
-              { value: 'bond', label: 'Облигации', count: accounts.flatMap((a) => a.bondRows).length },
+              { value: 'all', label: 'Все активы', count: allEquities.length + allBonds.length },
+              { value: 'eq', label: 'Акции', count: allEquities.length },
+              { value: 'bond', label: 'Облигации', count: allBonds.length },
               { value: 'cash', label: 'Деньги' },
             ]}
           />
           <div className="ia-table-head__r">
-            {tab !== 'summary' && (
-              <Select size="sm" value={equityAccountFilter} onChange={(e) => setEquityAccountFilter(e.target.value)}>
-                <option value="all">Все портфели</option>
-                {accounts.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
-              </Select>
-            )}
             <IconButton variant="outlined" label="Экспорт"><Download size={16} /></IconButton>
           </div>
         </div>
 
         {/* ── Сводный отчёт ── */}
         {tab === 'summary' && (
-          <SummaryReportTable accounts={accounts} totalValue={summary.totalValue} />
+          <SummaryReportTable accounts={filteredAccounts} totalValue={viewSummary.totalValue} />
         )}
 
         {/* ── Все активы ── */}

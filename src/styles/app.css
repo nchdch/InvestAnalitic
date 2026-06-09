@@ -31,11 +31,26 @@
 .ia-navitem--ghost { color: var(--text-3); font-weight: var(--fw-medium); }
 .ia-navitem__pip { margin-left: auto; width: 7px; height: 7px; border-radius: 50%; background: var(--ai); }
 .ia-sidebar__accounts { border-top: 1px solid var(--divider); padding-top: 14px; display: flex; flex-direction: column; gap: 4px; }
-.ia-acctmini { display: flex; align-items: center; gap: 10px; padding: 7px 8px; border-radius: var(--radius-md); }
+.ia-acctmini {
+  display: flex; align-items: center; gap: 10px; padding: 7px 8px; border-radius: var(--radius-md);
+  width: 100%; border: 0; background: transparent; cursor: pointer; font-family: inherit; text-align: left;
+  transition: background var(--dur-fast) var(--ease-out);
+}
 .ia-acctmini:hover { background: var(--surface-sunken); }
+.ia-acctmini.is-active { background: var(--accent-soft); }
+.ia-acctmini.is-active .ia-acctmini__name { color: var(--accent-hover); font-weight: var(--fw-semibold); }
+.ia-acctmini__icon {
+  display: flex; align-items: center; justify-content: center; flex: none;
+  width: 28px; height: 28px; border-radius: var(--radius-md);
+  background: var(--surface-sunken); color: var(--text-3);
+}
+.ia-acctmini.is-active .ia-acctmini__icon { background: var(--accent-soft); color: var(--accent-hover); }
 .ia-acctmini__txt { min-width: 0; }
 .ia-acctmini__name { font-size: var(--text-sm); color: var(--text-1); font-weight: var(--fw-medium); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.ia-acctmini__val { font-size: var(--text-xs); color: var(--text-3); }
+.ia-acctmini__val { font-size: var(--text-xs); color: var(--text-3); display: flex; align-items: center; gap: 3px; }
+.ia-acctmini__pnl { flex: none; }
+.ia-acctmini__pnl--up { color: var(--pnl-up); }
+.ia-acctmini__pnl--down { color: var(--pnl-down); }
 .ia-sidebar__user { margin-top: auto; display: flex; align-items: center; gap: 6px; padding: 8px; border-top: 1px solid var(--divider); font-size: var(--text-sm); color: var(--text-1); font-weight: var(--fw-medium); }
 .ia-sidebar__user span { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
