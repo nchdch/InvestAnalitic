@@ -36,8 +36,32 @@
 .ia-acctmini__txt { min-width: 0; }
 .ia-acctmini__name { font-size: var(--text-sm); color: var(--text-1); font-weight: var(--fw-medium); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .ia-acctmini__val { font-size: var(--text-xs); color: var(--text-3); }
-.ia-sidebar__user { margin-top: auto; display: flex; align-items: center; gap: 10px; padding: 8px; border-top: 1px solid var(--divider); font-size: var(--text-sm); color: var(--text-1); font-weight: var(--fw-medium); }
-.ia-sidebar__user :last-child { margin-left: auto; }
+.ia-sidebar__user { margin-top: auto; display: flex; align-items: center; gap: 6px; padding: 8px; border-top: 1px solid var(--divider); font-size: var(--text-sm); color: var(--text-1); font-weight: var(--fw-medium); }
+.ia-sidebar__user span { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* ---- Org switcher ---- */
+.ia-org-switch {
+  position: relative; display: flex; align-items: center; gap: 8px;
+  padding: 8px 10px; border-radius: var(--radius-md);
+  background: var(--surface-sunken); font-size: var(--text-sm);
+  color: var(--text-2); font-weight: var(--fw-medium); user-select: none;
+}
+.ia-org-switch--interactive { cursor: pointer; }
+.ia-org-switch--interactive:hover { background: var(--surface-elevated, var(--surface-sunken)); color: var(--text-1); }
+.ia-org-switch__name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ia-org-switch__dropdown {
+  position: absolute; top: calc(100% + 4px); left: 0; right: 0;
+  background: var(--surface-card); border: 1px solid var(--border-1);
+  border-radius: var(--radius-md); box-shadow: var(--shadow-md);
+  z-index: 200; overflow: hidden; min-width: 180px;
+}
+.ia-org-switch__item {
+  display: flex; align-items: center; gap: 8px; width: 100%; text-align: left;
+  padding: 9px 12px; border: 0; background: transparent; cursor: pointer;
+  font-size: var(--text-sm); color: var(--text-2); font-weight: var(--fw-medium); font-family: inherit;
+}
+.ia-org-switch__item:hover { background: var(--surface-sunken); color: var(--text-1); }
+.ia-org-switch__item.is-active { color: var(--accent); background: var(--accent-soft); }
 
 /* ---- Main column ---- */
 .ia-main { display: flex; flex-direction: column; overflow: hidden; }

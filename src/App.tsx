@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react'
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom'
 import { LandingPage } from './pages/LandingPage'
 import { AuthPage } from './pages/AuthPage'
 import { EmailVerifyPage } from './pages/EmailVerifyPage'
@@ -14,11 +14,28 @@ import { RebalancePage } from './pages/RebalancePage'
 import { CalendarPage } from './pages/CalendarPage'
 import { TradeModal } from './components/portfolio/TradeModal'
 import { useAuthStore } from './store/authStore'
+import { useOrgStore, getSavedOrgId } from './store/orgStore'
 import { refreshSession } from './api/auth'
+import { listOrgs } from './api/orgs'
 
 function AppLayout() {
   const [page, setPage] = useState<PageId>('dashboard')
   const [tradeOpen, setTradeOpen] = useState(false)
+  const { activeOrg, isLoading: orgLoading } = useOrgStore()
+  const navigate = useNavigate()
+
+  useEffect(() => {
+    if (!orgLoading && !activeOrg) {
+      navigate('/org-setup', { replace: true })
+    }
+  }, [orgLoading, activeOrg, navigate])
+
+  if (orgLoading) return (
+    <div className="ia-auth-wrap">
+      <div style={{ color: 'var(--text-3)' }}>Загрузка…</div>
+    </div>
+  )
+  if (!activeOrg) return null
 
   return (
     <>
@@ -42,14 +59,32 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 
 export function App() {
   const { setAuth, clearAuth, setLoading } = useAuthStore()
+  const { setOrgs, setActiveOrg, clearOrgs, setLoading: setOrgLoading } = useOrgStore()
 
-  // Try to restore session from refresh cookie on mount
   useEffect(() => {
     setLoading(true)
     refreshSession()
-      .then((r) => setAuth(r.user, r.accessToken))
-      .catch(() => clearAuth())
-  }, [setAuth, clearAuth, setLoading])
+      .then(async (r) => {
+        setAuth(r.user, r.accessToken)
+        setOrgLoading(true)
+        try {
+          const orgs = await listOrgs()
+          setOrgs(orgs)
+          const active = orgs.filter((o) => o.status === 'active')
+          const savedId = getSavedOrgId()
+          const saved = active.find((o) => o.id === savedId)
+          setActiveOrg(saved ?? active[0] ?? null)
+        } catch {
+          setActiveOrg(null)
+        } finally {
+          setOrgLoading(false)
+        }
+      })
+      .catch(() => {
+        clearAuth()
+        clearOrgs()
+      })
+  }, [setAuth, clearAuth, setLoading, setOrgs, setActiveOrg, clearOrgs, setOrgLoading])
 
   return (
     <BrowserRouter>

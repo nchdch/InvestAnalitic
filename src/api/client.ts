@@ -1,5 +1,10 @@
 ﻿import type { Account, Position, Trade, Payment, AccountSummary } from '@/types'
 import { useAuthStore } from '@/store/authStore'
+import { useOrgStore } from '@/store/orgStore'
+
+function activeOrgId(): string | undefined {
+  return useOrgStore.getState().activeOrg?.id
+}
 
 export interface HealthStatus {
   status: 'ok' | 'degraded'
@@ -48,10 +53,12 @@ export function getHealth(): Promise<HealthStatus> {
 
 // Accounts
 export function getAccounts(): Promise<Account[]> {
-  return request<Account[]>('/accounts')
+  const orgId = activeOrgId()
+  const q = orgId ? `?orgId=${orgId}` : ''
+  return request<Account[]>(`/accounts${q}`)
 }
 export function createAccount(name: string, broker: string): Promise<Account> {
-  return request<Account>('/accounts', { method: 'POST', body: JSON.stringify({ name, broker }) })
+  return request<Account>('/accounts', { method: 'POST', body: JSON.stringify({ name, broker, orgId: activeOrgId() }) })
 }
 export function updateAccount(id: string, name: string, broker: string): Promise<Account> {
   return request<Account>(`/accounts/${id}`, { method: 'PUT', body: JSON.stringify({ name, broker }) })
@@ -124,6 +131,8 @@ export function getPaymentStats(accountId?: string): Promise<{ totalGross: numbe
 
 // Portfolio
 export function getPortfolioSummary(): Promise<PortfolioResponse> {
-  return request<PortfolioResponse>('/portfolio/summary')
+  const orgId = activeOrgId()
+  const q = orgId ? `?orgId=${orgId}` : ''
+  return request<PortfolioResponse>(`/portfolio/summary${q}`)
 }
 

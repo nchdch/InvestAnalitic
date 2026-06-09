@@ -4,6 +4,7 @@ import { Button, Input, Card, Badge } from '../components'
 import { lookupInn, createOrJoinOrg, listOrgs } from '../api/orgs'
 import type { OrgInfo, Organization } from '@/types'
 import { Building2, Search, CheckCircle, Clock } from 'lucide-react'
+import { useOrgStore } from '../store/orgStore'
 
 type Step = 'list' | 'search' | 'confirm' | 'done'
 
@@ -16,6 +17,7 @@ export function OrgSetupPage() {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [joinResult, setJoinResult] = useState<{ isNew: boolean; status: string } | null>(null)
+  const { setOrgs: setOrgStoreOrgs, setActiveOrg, activeOrg } = useOrgStore()
 
   useEffect(() => {
     listOrgs().then(setMyOrgs).catch(() => {})
@@ -43,7 +45,13 @@ export function OrgSetupPage() {
       const res = await createOrJoinOrg(lookupResult.inn)
       setJoinResult({ isNew: res.isNew, status: (res.membership as { status: string }).status })
       setStep('done')
-      listOrgs().then(setMyOrgs).catch(() => {})
+      const updated = await listOrgs().catch(() => [] as Organization[])
+      setMyOrgs(updated)
+      setOrgStoreOrgs(updated)
+      if (res.isNew && !activeOrg) {
+        const newOrg = updated.find((o) => o.inn === lookupResult!.inn && o.status === 'active')
+        if (newOrg) setActiveOrg(newOrg)
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Ошибка')
     } finally {

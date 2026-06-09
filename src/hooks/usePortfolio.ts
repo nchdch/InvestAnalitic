@@ -2,6 +2,7 @@
 import type { AccountSummary, PortfolioSummary } from '@/types'
 import { getPortfolioSummary } from '../api/client'
 import { usePortfolioStore } from '../store/portfolioStore'
+import { useOrgStore } from '../store/orgStore'
 
 export interface UsePortfolioResult {
   summary: PortfolioSummary | null
@@ -12,6 +13,7 @@ export interface UsePortfolioResult {
 
 export function usePortfolio(): UsePortfolioResult {
   const version = usePortfolioStore((s) => s.version)
+  const activeOrgId = useOrgStore((s) => s.activeOrg?.id)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [summary, setSummary] = useState<PortfolioSummary | null>(null)
@@ -36,7 +38,7 @@ export function usePortfolio(): UsePortfolioResult {
       .finally(() => { if (!cancelled) setIsLoading(false) })
 
     return () => { cancelled = true }
-  }, [version])
+  }, [version, activeOrgId])
 
   return { summary, accounts, isLoading, error }
 }

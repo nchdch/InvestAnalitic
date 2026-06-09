@@ -55,10 +55,13 @@ function daysTo(dateStr: string): number | null {
   }
 }
 
-export async function getPortfolioSummary() {
-  const { rows: accounts } = await pool.query<DbAccount>(
-    'SELECT id, name, broker FROM accounts ORDER BY created_at'
-  )
+export async function getPortfolioSummary(orgId?: string) {
+  const { rows: accounts } = orgId
+    ? await pool.query<DbAccount>(
+        'SELECT id, name, broker FROM accounts WHERE org_id = $1 ORDER BY created_at',
+        [orgId]
+      )
+    : await pool.query<DbAccount>('SELECT id, name, broker FROM accounts ORDER BY created_at')
 
   if (accounts.length === 0) {
     return {

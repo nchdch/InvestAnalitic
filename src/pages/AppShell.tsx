@@ -1,11 +1,12 @@
-﻿import React from 'react'
+﻿import React, { useRef, useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import logoMark from '../assets/logo-mark.svg'
 import { Button, IconButton, Avatar } from '../components'
-import { LayoutDashboard, Sparkles, Scale, Calendar, Plus, Bell, Search, Settings, LogOut } from 'lucide-react'
+import { LayoutDashboard, Sparkles, Scale, Calendar, Plus, Bell, Search, Settings, LogOut, Building2, ChevronDown, ChevronUp } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { usePortfolio } from '../hooks/usePortfolio'
 import { useAuthStore } from '../store/authStore'
+import { useOrgStore } from '../store/orgStore'
 import { logoutUser } from '../api/auth'
 
 const RUB = new Intl.NumberFormat('ru-RU', { minimumFractionDigits: 0, maximumFractionDigits: 0 })
@@ -44,11 +45,30 @@ export function AppShell({ page, onNav, onAddTrade, children }: Props) {
   const { accounts } = usePortfolio()
   const user = useAuthStore((s) => s.user)
   const clearAuth = useAuthStore((s) => s.clearAuth)
+  const { orgs, activeOrg, setActiveOrg, clearOrgs } = useOrgStore()
   const navigate = useNavigate()
+
+  const [orgOpen, setOrgOpen] = useState(false)
+  const dropdownRef = useRef<HTMLDivElement>(null)
+
+  const activeOrgs = orgs.filter((o) => o.status === 'active')
+  const canSwitch = activeOrgs.length > 1
+
+  useEffect(() => {
+    if (!orgOpen) return
+    function handle(e: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setOrgOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handle)
+    return () => document.removeEventListener('mousedown', handle)
+  }, [orgOpen])
 
   const handleLogout = async () => {
     await logoutUser().catch(() => {})
     clearAuth()
+    clearOrgs()
     navigate('/auth', { replace: true })
   }
 
@@ -61,6 +81,32 @@ export function AppShell({ page, onNav, onAddTrade, children }: Props) {
           <img src={logoMark} alt="" width={32} height={32} />
           <span className="ia-sidebar__word">Invest<b>Analitic</b></span>
         </div>
+
+        {activeOrg && (
+          <div
+            ref={dropdownRef}
+            className={'ia-org-switch' + (canSwitch ? ' ia-org-switch--interactive' : '')}
+            onClick={() => canSwitch && setOrgOpen((v) => !v)}
+          >
+            <Building2 size={15} style={{ flexShrink: 0, color: 'var(--accent)' }} />
+            <span className="ia-org-switch__name">{activeOrg.name}</span>
+            {canSwitch && (orgOpen ? <ChevronUp size={13} /> : <ChevronDown size={13} />)}
+            {orgOpen && (
+              <div className="ia-org-switch__dropdown">
+                {activeOrgs.map((org) => (
+                  <button
+                    key={org.id}
+                    className={'ia-org-switch__item' + (org.id === activeOrg.id ? ' is-active' : '')}
+                    onClick={(e) => { e.stopPropagation(); setActiveOrg(org); setOrgOpen(false) }}
+                  >
+                    <Building2 size={13} />
+                    {org.name}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
 
         <nav className="ia-sidebar__nav">
           {NAV_ITEMS.map(({ id, label, Icon, pip }) => (

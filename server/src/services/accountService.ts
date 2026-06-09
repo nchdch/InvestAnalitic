@@ -1,9 +1,14 @@
-﻿import { pool } from '../db/pool.js'
+import { pool } from '../db/pool.js'
 
-export async function listAccounts() {
-  const { rows } = await pool.query(
-    'SELECT id, name, broker, created_at AS "createdAt" FROM accounts ORDER BY created_at'
-  )
+export async function listAccounts(orgId?: string) {
+  const { rows } = orgId
+    ? await pool.query(
+        'SELECT id, name, broker, created_at AS "createdAt" FROM accounts WHERE org_id = $1 ORDER BY created_at',
+        [orgId]
+      )
+    : await pool.query(
+        'SELECT id, name, broker, created_at AS "createdAt" FROM accounts ORDER BY created_at'
+      )
   return rows
 }
 
@@ -15,10 +20,10 @@ export async function getAccount(id: string) {
   return rows[0] ?? null
 }
 
-export async function createAccount(name: string, broker: string) {
+export async function createAccount(name: string, broker: string, userId?: string, orgId?: string) {
   const { rows } = await pool.query(
-    'INSERT INTO accounts (name, broker) VALUES ($1, $2) RETURNING id, name, broker, created_at AS "createdAt"',
-    [name, broker]
+    'INSERT INTO accounts (name, broker, user_id, org_id) VALUES ($1, $2, $3, $4) RETURNING id, name, broker, created_at AS "createdAt"',
+    [name, broker, userId ?? null, orgId ?? null]
   )
   return rows[0]
 }
