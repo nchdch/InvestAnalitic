@@ -1,30 +1,24 @@
 import { usePortfolio } from './hooks/usePortfolio'
 
-/**
- * Временная корневая страница на время инициализации проекта.
- * Структуру и компоненты главной страницы (см. CLAUDE.md «Структура интерфейса»)
- * реализует Claude Design в src/pages и src/components — этот файл лишь
- * проверяет сквозную связку frontend → backend → БД.
- */
+// Временная заглушка — Claude Design заменит этот файл на src/pages/PortfolioPage
 export function App() {
-  const { apiStatus, isLoading, error } = usePortfolio()
+  const { summary, accounts, isLoading, error } = usePortfolio()
+
+  if (isLoading) return <p style={{ padding: 24 }}>Загрузка…</p>
+  if (error) return <p style={{ padding: 24, color: 'crimson' }}>Ошибка: {error}</p>
 
   return (
     <main style={{ fontFamily: 'sans-serif', padding: 24 }}>
       <h1>InvestAnalitic</h1>
-      <p>Инвестиционный портфельный ассистент — каркас проекта инициализирован.</p>
-      <section>
-        <h2>Статус API</h2>
-        {isLoading && <p>Проверка подключения к серверу…</p>}
-        {error && <p style={{ color: 'crimson' }}>Ошибка: {error}</p>}
-        {apiStatus && (
-          <ul>
-            <li>Статус: {apiStatus.status}</li>
-            <li>База данных: {apiStatus.db}</li>
-            <li>Время: {apiStatus.timestamp}</li>
-          </ul>
-        )}
-      </section>
+      {summary && (
+        <p>Портфель: {summary.totalValue.toLocaleString('ru-RU')} ₽ · P&L: +{summary.unrealizedPnlPercent}%</p>
+      )}
+      {accounts.map((acc) => (
+        <section key={acc.id}>
+          <h2>{acc.name} ({acc.broker})</h2>
+          <p>{acc.totalValue.toLocaleString('ru-RU')} ₽ · {acc.equityRows.length} акций · {acc.bondRows.length} облигаций</p>
+        </section>
+      ))}
     </main>
   )
 }
