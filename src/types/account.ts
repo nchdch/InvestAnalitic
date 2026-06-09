@@ -1,6 +1,6 @@
 import type { Currency } from './common'
 
-/** Брокерский счёт пользователя — узел иерархии «Портфель → Счёт → ...» из CLAUDE.md. */
+/** Портфель пользователя (брокерский счёт) — узел иерархии «Портфель → Счёт → ...» из CLAUDE.md. */
 export interface Account {
   id: string
   name: string

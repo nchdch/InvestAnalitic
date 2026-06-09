@@ -37,7 +37,7 @@ export interface CashRow {
   accountWeight: number
 }
 
-/** Данные одного счёта — всё что нужно для рендера блока счёта на главной странице. */
+/** Данные одного портфеля — всё что нужно для рендера блока портфеля на главной странице. */
 export interface AccountSummary {
   id: string
   name: string

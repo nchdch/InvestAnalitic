@@ -5,36 +5,11 @@ import { injectOnce } from '../_internal/style'
 import { getAccounts, createAccount, createTrade, getExchangeRate } from '../../api/client'
 import { usePortfolioStore } from '../../store/portfolioStore'
 import { SecuritySearchInput } from './SecuritySearchInput'
+import { MODAL_CSS } from './modalShared'
 import type { SecuritySearchResult } from '../../api/client'
 import type { Account } from '@/types'
 
 const CSS = `
-.ia-modal-backdrop {
-  position: fixed; inset: 0; z-index: 1000;
-  background: rgba(0,0,0,.45); backdrop-filter: blur(2px);
-  display: flex; align-items: center; justify-content: center;
-  padding: 24px;
-  animation: ia-fade-in var(--dur-fast) var(--ease-out);
-}
-@keyframes ia-fade-in { from { opacity:0 } to { opacity:1 } }
-.ia-modal {
-  background: var(--surface-card); border: 1px solid var(--border-1);
-  border-radius: var(--radius-lg); box-shadow: var(--shadow-xl);
-  width: 100%; max-width: 480px;
-  animation: ia-slide-up var(--dur-normal) var(--ease-out);
-  max-height: 90vh; display: flex; flex-direction: column;
-}
-@keyframes ia-slide-up { from { transform: translateY(16px); opacity:0 } to { transform: translateY(0); opacity:1 } }
-.ia-modal__head {
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 18px 20px 14px; border-bottom: 1px solid var(--border-1);
-  flex-shrink: 0;
-}
-.ia-modal__title { font-size: var(--text-h4); font-weight: var(--fw-bold); color: var(--text-1); }
-.ia-modal__body { padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 14px; }
-.ia-modal__foot { padding: 14px 20px; border-top: 1px solid var(--border-1); display: flex; gap: 10px; justify-content: flex-end; flex-shrink: 0; }
-.ia-modal-close { background: transparent; border: 0; cursor: pointer; color: var(--text-3); display: flex; padding: 4px; border-radius: var(--radius-sm); }
-.ia-modal-close:hover { color: var(--text-1); background: var(--surface-sunken); }
 .ia-toggle-row { display: flex; gap: 8px; }
 .ia-toggle-btn {
   flex: 1; padding: 9px 14px; border-radius: var(--radius-md);
@@ -48,9 +23,6 @@ const CSS = `
 .ia-toggle-btn.is-active { border-color: var(--accent); background: var(--accent-soft); color: var(--accent-hover); font-weight: var(--fw-semibold); }
 .ia-toggle-btn.is-sell.is-active { border-color: var(--loss); background: var(--loss-soft); color: var(--loss); }
 .ia-field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-.ia-modal-error { background: var(--loss-soft); border: 1px solid var(--loss); border-radius: var(--radius-md); padding: 10px 14px; font-size: var(--text-sm); color: var(--loss); }
-.ia-modal-divider { border: 0; border-top: 1px solid var(--divider); margin: 4px 0; }
-.ia-modal-section-label { font-size: var(--text-xs); font-weight: var(--fw-semibold); letter-spacing: var(--tracking-wide); text-transform: uppercase; color: var(--text-3); }
 .ia-rate-refresh {
   background: transparent; border: 0; cursor: pointer; color: var(--text-3);
   display: flex; align-items: center; padding: 0; line-height: 0;
@@ -99,7 +71,8 @@ const EMPTY: FormState = {
 }
 
 export function TradeModal({ open, onClose }: Props) {
-  injectOnce('ia-modal', CSS)
+  injectOnce('ia-modal', MODAL_CSS)
+  injectOnce('ia-trade-modal', CSS)
 
   const bump = usePortfolioStore((s) => s.bump)
   const [accounts, setAccounts] = useState<Account[]>([])
@@ -171,7 +144,7 @@ export function TradeModal({ open, onClose }: Props) {
       let accountId = form.accountId
 
       if (needNewAccount) {
-        if (!newAccName.trim()) return setError('Введите название счёта')
+        if (!newAccName.trim()) return setError('Введите название портфеля')
         if (!newAccBroker.trim()) return setError('Введите брокера')
         const acc = await createAccount(newAccName.trim(), newAccBroker.trim())
         accountId = acc.id
@@ -214,12 +187,12 @@ export function TradeModal({ open, onClose }: Props) {
           <div className="ia-modal__body">
             {error && <div className="ia-modal-error">{error}</div>}
 
-            {/* Счёт */}
+            {/* Портфель */}
             {needNewAccount ? (
               <>
-                <div className="ia-modal-section-label">Новый счёт</div>
+                <div className="ia-modal-section-label">Новый портфель</div>
                 <Input
-                  label="Название счёта"
+                  label="Название портфеля"
                   placeholder="Сбер Инвестиции"
                   value={newAccName}
                   onChange={(e) => setNewAccName(e.target.value)}
@@ -237,7 +210,7 @@ export function TradeModal({ open, onClose }: Props) {
               </>
             ) : (
               <Select
-                label="Счёт"
+                label="Портфель"
                 value={form.accountId}
                 onChange={(e) => set('accountId', e.target.value)}
               >

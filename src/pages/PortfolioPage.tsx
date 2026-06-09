@@ -51,7 +51,7 @@ function DashCell({ value, percent }: { value: number | null; percent?: number |
 }
 
 function SummaryReportTable({ accounts, totalValue }: { accounts: AccountSummary[]; totalValue: number }) {
-  // expandedAccounts: какие счета раскрыты
+  // expandedAccounts: какие портфели раскрыты
   const [expandedAccounts, setExpandedAccounts] = useState<Set<string>>(
     new Set(accounts.map((a) => a.id))
   )
@@ -103,7 +103,7 @@ function SummaryReportTable({ accounts, totalValue }: { accounts: AccountSummary
 
           return (
             <React.Fragment key={acc.id}>
-              {/* ── Уровень 1: Счёт ── */}
+              {/* ── Уровень 1: Портфель ── */}
               <tr style={{ cursor: 'pointer', background: 'var(--surface-sunken)' }} onClick={() => toggleAcc(acc.id)}>
                 <td>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 600, color: 'var(--text-1)' }}>
@@ -285,7 +285,7 @@ function AllAssetsTable({ accounts }: { accounts: AccountSummary[] }) {
           <th style={{ textAlign: 'right' }}>Прибыль</th>
           <th style={{ textAlign: 'right' }}>Изм. за день</th>
           <th style={{ textAlign: 'right' }}>Вес</th>
-          <th>Счёт</th>
+          <th>Портфель</th>
         </tr>
       </thead>
       <tbody>
@@ -443,7 +443,7 @@ export function PortfolioPage() {
           <div className="ia-table-head__r">
             {tab !== 'summary' && (
               <Select size="sm" value={equityAccountFilter} onChange={(e) => setEquityAccountFilter(e.target.value)}>
-                <option value="all">Все счета</option>
+                <option value="all">Все портфели</option>
                 {accounts.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
               </Select>
             )}

@@ -33,6 +33,7 @@ interface Props {
   page: PageId
   onNav: (page: PageId) => void
   onAddTrade: () => void
+  onAddPortfolio: () => void
   children: React.ReactNode
 }
 
@@ -43,7 +44,7 @@ const PAGE_TITLE: Record<PageId, { title: string; sub: string }> = {
   calendar:   { title: 'Выплаты',       sub: 'Дивиденды и купоны' },
 }
 
-export function AppShell({ page, onNav, onAddTrade, children }: Props) {
+export function AppShell({ page, onNav, onAddTrade, onAddPortfolio, children }: Props) {
   const { accounts } = usePortfolio()
   const user = useAuthStore((s) => s.user)
   const clearAuth = useAuthStore((s) => s.clearAuth)
@@ -134,7 +135,7 @@ export function AppShell({ page, onNav, onAddTrade, children }: Props) {
         </nav>
 
         <div className="ia-sidebar__accounts">
-          <div className="ia-eyebrow" style={{ padding: '0 4px 8px' }}>Счета</div>
+          <div className="ia-eyebrow" style={{ padding: '0 4px 8px' }}>Портфели</div>
           {accounts.map((a) => (
             <div key={a.id} className="ia-acctmini">
               <Avatar name={a.name} size="sm" />
@@ -144,8 +145,8 @@ export function AppShell({ page, onNav, onAddTrade, children }: Props) {
               </div>
             </div>
           ))}
-          <button className="ia-navitem ia-navitem--ghost" onClick={onAddTrade}>
-            <Plus size={16} /><span>Добавить счёт</span>
+          <button className="ia-navitem ia-navitem--ghost" onClick={onAddPortfolio}>
+            <Plus size={16} /><span>Добавить портфель</span>
           </button>
         </div>
 
