@@ -586,7 +586,7 @@ export function PortfolioPage() {
         {tab === 'bond' && (
           allBonds.length === 0
             ? <div style={{ padding: '32px', textAlign: 'center', color: 'var(--text-3)', fontSize: 'var(--text-sm)' }}>Облигации не найдены</div>
-            : <table className="ia-table">
+            : <table className="ia-table ia-table--compact">
                 <thead>
                   <tr>
                     <th>Выпуск</th>
