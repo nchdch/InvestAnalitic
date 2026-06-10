@@ -156,8 +156,6 @@
 .ia-cell-tk { display: flex; align-items: center; gap: 10px; }
 .ia-cell-tk__t { font-weight: var(--fw-semibold); color: var(--text-1); font-size: var(--text-sm); }
 .ia-cell-tk__n { font-size: var(--text-xs); color: var(--text-3); }
-.ia-cash { padding: 8px 18px 16px; }
-.ia-cash__row { display: flex; justify-content: space-between; padding: 12px 0; font-size: var(--text-base); color: var(--text-1); }
 
 /* ---- Chat ---- */
 .ia-chat { height: 100%; max-width: 840px; }

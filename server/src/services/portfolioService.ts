@@ -272,8 +272,10 @@ export async function getPortfolioSummary(orgId?: string) {
       const rubEquivalent = Math.round(c.amount * rubRate * 100) / 100
       return {
         balance: { accountId: c.accountId, currency: c.currency, amount: c.amount },
+        rate: rubRate,
         rubEquivalent,
         accountWeight: 0,
+        portfolioWeight: 0,
       }
     })
     const accCashValue = cashRows.reduce((sum, r) => sum + r.rubEquivalent, 0)
@@ -309,6 +311,7 @@ export async function getPortfolioSummary(orgId?: string) {
     }
     for (const row of acc.cashRows) {
       row.accountWeight = acc.totalValue > 0 ? Math.round((row.rubEquivalent / acc.totalValue) * 10000) / 100 : 0
+      row.portfolioWeight = totalValue > 0 ? Math.round((row.rubEquivalent / totalValue) * 10000) / 100 : 0
     }
   }
 

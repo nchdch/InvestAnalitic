@@ -89,14 +89,38 @@ export async function price(req: Request, res: Response): Promise<void> {
   }
 }
 
+/** Тикеры валютных пар на валютном рынке MOEX (engine=currency, market=selt). */
+const CURRENCY_TICKERS: Record<string, string> = {
+  USD: 'USD000UTSTOM',
+  EUR: 'EUR_RUB__TOM',
+  CNY: 'CNYRUB_TOM',
+}
+
 export async function history(req: Request, res: Response): Promise<void> {
   const ticker = (req.query.ticker as string | undefined)?.trim().toUpperCase()
-  const assetType = (req.query.assetType as string | undefined) === 'bond' ? 'bond' : 'equity'
+  const assetTypeParam = req.query.assetType as string | undefined
+  const assetType = assetTypeParam === 'bond' ? 'bond' : assetTypeParam === 'currency' ? 'currency' : 'equity'
   const daysParam = Number(req.query.days)
   const days = Number.isFinite(daysParam) && daysParam > 0 ? daysParam : 30
 
   if (!ticker) {
     res.status(400).json({ error: 'ticker is required' })
+    return
+  }
+
+  if (assetType === 'currency') {
+    const moexTicker = CURRENCY_TICKERS[ticker]
+    if (!moexTicker) {
+      res.json({ ticker, dates: [], prices: [] })
+      return
+    }
+    try {
+      const moex = await fetchPriceHistory(moexTicker, 'currency', days)
+      res.json({ ticker, dates: moex.dates, prices: moex.prices })
+    } catch (err) {
+      console.error('currency history error:', err)
+      res.status(502).json({ error: 'Ошибка получения истории курса валюты' })
+    }
     return
   }
 

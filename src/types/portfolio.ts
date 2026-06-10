@@ -41,8 +41,11 @@ export interface BondRow {
 /** Строка денежных средств с эквивалентом в базовой валюте. */
 export interface CashRow {
   balance: CashBalance
+  /** Курс валюты к рублю (1 для RUB). */
+  rate: number
   rubEquivalent: number
   accountWeight: number
+  portfolioWeight: number
 }
 
 /** Данные одного портфеля — всё что нужно для рендера блока портфеля на главной странице. */

@@ -364,29 +364,35 @@ export function PortfolioPage() {
     new Set(accounts.flatMap((a) => a.bondRows.map((r) => r.position.ticker)))
   ).sort().join(',')
 
+  const cashCurrenciesKey = Array.from(
+    new Set(accounts.flatMap((a) => a.cashRows.map((r) => r.balance.currency)).filter((c) => c !== 'RUB'))
+  ).sort().join(',')
+
   useEffect(() => {
     const equityTickers = equityTickersKey ? equityTickersKey.split(',') : []
     const bondTickers = bondTickersKey ? bondTickersKey.split(',') : []
+    const currencies = cashCurrenciesKey ? cashCurrenciesKey.split(',') : []
     const toFetch = [
-      ...equityTickers.filter((t) => !fetchedTickersRef.current.has(t)).map((ticker) => ({ ticker, assetType: 'equity' as const })),
-      ...bondTickers.filter((t) => !fetchedTickersRef.current.has(t)).map((ticker) => ({ ticker, assetType: 'bond' as const })),
+      ...equityTickers.filter((t) => !fetchedTickersRef.current.has(t)).map((t) => ({ key: t, ticker: t, assetType: 'equity' as const })),
+      ...bondTickers.filter((t) => !fetchedTickersRef.current.has(t)).map((t) => ({ key: t, ticker: t, assetType: 'bond' as const })),
+      ...currencies.filter((c) => !fetchedTickersRef.current.has(`cur:${c}`)).map((c) => ({ key: `cur:${c}`, ticker: c, assetType: 'currency' as const })),
     ]
     if (toFetch.length === 0) return
-    toFetch.forEach(({ ticker }) => fetchedTickersRef.current.add(ticker))
+    toFetch.forEach(({ key }) => fetchedTickersRef.current.add(key))
     Promise.all(
-      toFetch.map(({ ticker, assetType }) =>
+      toFetch.map(({ key, ticker, assetType }) =>
         getPriceHistory(ticker, assetType)
-          .then((r): readonly [string, number[]] => [ticker, r.prices])
-          .catch((): readonly [string, number[]] => [ticker, []])
+          .then((r): readonly [string, number[]] => [key, r.prices])
+          .catch((): readonly [string, number[]] => [key, []])
       )
     ).then((entries) => {
       setPriceHistory((prev) => {
         const next = { ...prev }
-        for (const [t, prices] of entries) next[t] = prices
+        for (const [k, prices] of entries) next[k] = prices
         return next
       })
     })
-  }, [equityTickersKey, bondTickersKey])
+  }, [equityTickersKey, bondTickersKey, cashCurrenciesKey])
 
   if (isLoading) return <div className="ia-screen"><Spinner /></div>
 
@@ -656,14 +662,39 @@ export function PortfolioPage() {
         {tab === 'cash' && (
           allCash.length === 0
             ? <div style={{ padding: '32px', textAlign: 'center', color: 'var(--text-3)', fontSize: 'var(--text-sm)' }}>Денежные остатки не учтены</div>
-            : <div className="ia-cash">
-                {allCash.map((row, i) => (
-                  <div key={i} className="ia-cash__row">
-                    <span className="ia-mono">{row.balance.currency}</span>
-                    <span className="ia-num">{money(row.rubEquivalent)}</span>
-                  </div>
-                ))}
-              </div>
+            : <table className="ia-table">
+                <thead>
+                  <tr>
+                    <th>Валюта</th>
+                    <th className="r">Сумма</th>
+                    <th className="r">Тек. цена, ₽</th>
+                    <th className="r">Тек. стоимость, ₽</th>
+                    <th className="r">Доля</th>
+                    <th>Динамика</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {allCash.map((row, i) => (
+                    <tr key={i}>
+                      <td>
+                        <div className="ia-cell-tk">
+                          <Avatar name={row.balance.currency} size="sm" color="var(--ink-600)" />
+                          <div className="ia-cell-tk__t ia-mono">{row.balance.currency}</div>
+                        </div>
+                      </td>
+                      <td className="r ia-num">{RUB.format(row.balance.amount)}</td>
+                      <td className="r ia-num">{RUB.format(row.rate)}</td>
+                      <td className="r ia-num" style={{ color: 'var(--text-1)', fontWeight: 600 }}>{money(row.rubEquivalent)}</td>
+                      <td className="r ia-num" style={{ color: 'var(--text-3)' }}>{row.portfolioWeight.toFixed(1)}%</td>
+                      <td>
+                        {row.balance.currency !== 'RUB'
+                          ? <Sparkline data={priceHistory[`cur:${row.balance.currency}`] ?? []} />
+                          : <span style={{ color: 'var(--text-4)' }}>—</span>}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
         )}
       </Card>
     </div>

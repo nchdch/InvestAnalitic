@@ -167,7 +167,7 @@ export interface PriceHistoryResult {
   dates: string[]
   prices: number[]
 }
-export function getPriceHistory(ticker: string, assetType: 'equity' | 'bond' = 'equity', days?: number): Promise<PriceHistoryResult> {
+export function getPriceHistory(ticker: string, assetType: 'equity' | 'bond' | 'currency' = 'equity', days?: number): Promise<PriceHistoryResult> {
   const d = days ? `&days=${days}` : ''
   return request<PriceHistoryResult>(`/securities/history?ticker=${encodeURIComponent(ticker)}&assetType=${assetType}${d}`)
 }
