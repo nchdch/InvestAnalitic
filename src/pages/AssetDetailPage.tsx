@@ -130,7 +130,7 @@ export function AssetDetailPage({ ticker, accounts, onBack }: Props) {
                 </div>
                 {data.isLoading
                   ? <Empty text="Загрузка истории цен…" />
-                  : <PriceChart dates={visibleDates} prices={visiblePrices} />}
+                  : <PriceChart dates={visibleDates} prices={visiblePrices} currency={position.currency} />}
                 {data.performance.length > 0 && (
                   <div className="ia-asset-perf">
                     {data.performance.map((p) => (
