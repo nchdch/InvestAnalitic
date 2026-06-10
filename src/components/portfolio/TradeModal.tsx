@@ -58,6 +58,7 @@ export function TradeModal({ open, onClose }: Props) {
   const [rateDate, setRateDate] = useState('')
   const [fetchingRate, setFetchingRate] = useState(false)
   const [priceLoaded, setPriceLoaded] = useState(false)
+  const [priceUnavailable, setPriceUnavailable] = useState(false)
   const [fetchingPrice, setFetchingPrice] = useState(false)
 
   const needNewAccount = accounts.length === 0
@@ -68,6 +69,7 @@ export function TradeModal({ open, onClose }: Props) {
     setError('')
     setRateDate('')
     setPriceLoaded(false)
+    setPriceUnavailable(false)
     setNewAccName('')
     setNewAccBroker('')
     getAccounts()
@@ -107,13 +109,17 @@ export function TradeModal({ open, onClose }: Props) {
     const reqId = ++priceRequestRef.current
     setFetchingPrice(true)
     setPriceLoaded(false)
+    setPriceUnavailable(false)
     getSecurityPrice(ticker.trim().toUpperCase(), assetType)
       .then((r) => {
         if (priceRequestRef.current !== reqId) return
         setForm((f) => ({ ...f, price: String(r.price) }))
         setPriceLoaded(true)
       })
-      .catch(() => {})
+      .catch(() => {
+        if (priceRequestRef.current !== reqId) return
+        setPriceUnavailable(true)
+      })
       .finally(() => { if (priceRequestRef.current === reqId) setFetchingPrice(false) })
   }, [])
 
@@ -293,9 +299,13 @@ export function TradeModal({ open, onClose }: Props) {
                 step="any"
                 placeholder="286.50"
                 value={form.price}
-                onChange={(e) => { set('price', e.target.value); setPriceLoaded(false) }}
+                onChange={(e) => { set('price', e.target.value); setPriceLoaded(false); setPriceUnavailable(false) }}
                 required
-                hint={priceLoaded ? 'Текущая цена с MOEX, можно изменить' : undefined}
+                hint={
+                  priceLoaded ? 'Текущая цена с MOEX, можно изменить'
+                  : priceUnavailable ? 'Не удалось получить цену с MOEX — введите вручную'
+                  : undefined
+                }
                 suffix={
                   <button
                     type="button"

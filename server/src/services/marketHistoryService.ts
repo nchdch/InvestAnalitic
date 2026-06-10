@@ -50,6 +50,7 @@ const SOURCES: Record<'equity' | 'bond', { engine: string; market: string }[]> =
   equity: [
     { engine: 'stock', market: 'shares' },
     { engine: 'otc', market: 'shares' },
+    { engine: 'otc', market: 'sharesndm' },
   ],
   bond: [{ engine: 'stock', market: 'bonds' }],
 }

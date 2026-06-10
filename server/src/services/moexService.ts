@@ -49,9 +49,9 @@ function pickPrice(data: MoexMarketData['marketdata'], fields: string[], preferr
   return null
 }
 
-/** Цена закрытия предыдущей торговой сессии (фоллбэк для тонко торгуемых ОТС-бумаг). */
-async function fetchOtcPrevClose(ticker: string): Promise<number | null> {
-  const url = `https://iss.moex.com/iss/engines/otc/markets/shares/securities/${encodeURIComponent(ticker)}.json?iss.meta=off&iss.only=securities&securities.columns=BOARDID,PREVPRICE`
+/** Цена закрытия предыдущей торговой сессии (фоллбэк, если LAST/CLOSE сейчас не торгуются). */
+async function fetchPrevPrice(engine: string, market: string, ticker: string): Promise<number | null> {
+  const url = `https://iss.moex.com/iss/engines/${engine}/markets/${market}/securities/${encodeURIComponent(ticker)}.json?iss.meta=off&iss.only=securities&securities.columns=BOARDID,PREVPRICE`
   const res = await fetch(url, {
     headers: { 'User-Agent': 'InvestAnalitic/1.0' },
     signal: AbortSignal.timeout(5000),
@@ -71,8 +71,10 @@ async function fetchOtcPrevClose(ticker: string): Promise<number | null> {
 
 /**
  * Текущая цена бумаги с MOEX. Для облигаций — в % от номинала (как и average_price).
- * Сначала проверяется основной рынок (stock), для акций дополнительно — рынок
- * иностранных бумаг ОТС (тикеры с суффиксом "-RM" и т.п.).
+ * Источники проверяются по очереди:
+ * 1. Основной рынок (stock) — LAST/CLOSE, затем PREVPRICE (если бумага сегодня не торговалась)
+ * 2. Для акций дополнительно — рынок иностранных бумаг ОТС (тикеры "-RM" и т.п.)
+ * 3. Для акций дополнительно — рынок адресных ОТС-сделок (sharesndm)
  */
 export async function fetchMoexPrice(ticker: string, assetType: 'equity' | 'bond'): Promise<number | null> {
   const market = assetType === 'bond' ? 'bonds' : 'shares'
@@ -83,6 +85,8 @@ export async function fetchMoexPrice(ticker: string, assetType: 'equity' | 'bond
       const price = pickPrice(stockData, ['LAST', 'CLOSE'], PREFERRED_BOARDS[assetType])
       if (price != null) return price
     }
+    const prevPrice = await fetchPrevPrice('stock', market, ticker)
+    if (prevPrice != null) return prevPrice
   } catch {
     // основной рынок недоступен — пробуем ОТС ниже (для акций)
   }
@@ -95,8 +99,21 @@ export async function fetchMoexPrice(ticker: string, assetType: 'equity' | 'bond
       const price = pickPrice(otcData, ['LAST', 'CLOSEPRICE', 'WAPRICE'])
       if (price != null) return price
     }
-    return await fetchOtcPrevClose(ticker)
+    const prevPrice = await fetchPrevPrice('otc', 'shares', ticker)
+    if (prevPrice != null) return prevPrice
+  } catch {
+    // переходим к следующему рынку
+  }
+
+  try {
+    const ndmData = await fetchMarketData('otc', 'sharesndm', ticker, 'BOARDID,LAST')
+    if (ndmData) {
+      const price = pickPrice(ndmData, ['LAST'])
+      if (price != null) return price
+    }
   } catch {
     return null
   }
+
+  return null
 }
