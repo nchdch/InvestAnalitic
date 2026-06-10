@@ -360,8 +360,8 @@ export function PortfolioPage() {
     Promise.all(
       toFetch.map((t) =>
         getPriceHistory(t, 'equity')
-          .then((r) => [t, r.prices] as const)
-          .catch(() => [t, []] as const)
+          .then((r): readonly [string, number[]] => [t, r.prices])
+          .catch((): readonly [string, number[]] => [t, []])
       )
     ).then((entries) => {
       setPriceHistory((prev) => {

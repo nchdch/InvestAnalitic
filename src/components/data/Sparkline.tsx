@@ -1,4 +1,3 @@
-import React from 'react'
 import { injectOnce } from '../_internal/style'
 
 const CSS = `
