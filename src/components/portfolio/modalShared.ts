@@ -12,7 +12,7 @@ export const MODAL_CSS = `
   border-radius: var(--radius-lg); box-shadow: var(--shadow-xl);
   width: 100%; max-width: 480px;
   animation: ia-slide-up var(--dur-normal) var(--ease-out);
-  max-height: 90vh; display: flex; flex-direction: column;
+  max-height: 95vh; display: flex; flex-direction: column;
   overflow: hidden;
 }
 .ia-modal--wide { max-width: 800px; }
@@ -20,12 +20,12 @@ export const MODAL_CSS = `
 .ia-modal > form { display: flex; flex-direction: column; min-height: 0; flex: 1 1 auto; }
 .ia-modal__head {
   display: flex; align-items: center; justify-content: space-between;
-  padding: 18px 20px 14px; border-bottom: 1px solid var(--border-1);
+  padding: 14px 20px 10px; border-bottom: 1px solid var(--border-1);
   flex-shrink: 0;
 }
 .ia-modal__title { font-size: var(--text-h4); font-weight: var(--fw-bold); color: var(--text-1); }
-.ia-modal__body { padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 14px; flex: 1 1 auto; min-height: 0; }
-.ia-modal__foot { padding: 14px 20px; border-top: 1px solid var(--border-1); display: flex; gap: 10px; justify-content: flex-end; flex-shrink: 0; }
+.ia-modal__body { padding: 16px 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; flex: 1 1 auto; min-height: 0; }
+.ia-modal__foot { padding: 12px 20px; border-top: 1px solid var(--border-1); display: flex; gap: 10px; justify-content: flex-end; flex-shrink: 0; }
 .ia-modal-close { background: transparent; border: 0; cursor: pointer; color: var(--text-3); display: flex; padding: 4px; border-radius: var(--radius-sm); }
 .ia-modal-close:hover { color: var(--text-1); background: var(--surface-sunken); }
 .ia-modal-error { background: var(--loss-soft); border: 1px solid var(--loss); border-radius: var(--radius-md); padding: 10px 14px; font-size: var(--text-sm); color: var(--loss); }
@@ -35,7 +35,7 @@ export const MODAL_CSS = `
 /* ---- Общие элементы форм модалок ---- */
 .ia-toggle-row { display: flex; gap: 8px; }
 .ia-toggle-btn {
-  flex: 1; padding: 9px 14px; border-radius: var(--radius-md);
+  flex: 1; padding: 7px 14px; border-radius: var(--radius-md);
   border: 1px solid var(--border-1); background: transparent;
   cursor: pointer; font-family: inherit; font-size: var(--text-sm);
   font-weight: var(--fw-medium); color: var(--text-2);

@@ -239,7 +239,7 @@ export function TradeModal({ open, onClose }: Props) {
 
             {/* Тип актива */}
             <div>
-              <div className="ia-modal-section-label" style={{ marginBottom: 8 }}>Тип актива</div>
+              <div className="ia-modal-section-label" style={{ marginBottom: 6 }}>Тип актива</div>
               <div className="ia-toggle-row">
                 <button
                   type="button"
@@ -260,7 +260,7 @@ export function TradeModal({ open, onClose }: Props) {
 
             {/* Направление */}
             <div>
-              <div className="ia-modal-section-label" style={{ marginBottom: 8 }}>Операция</div>
+              <div className="ia-modal-section-label" style={{ marginBottom: 6 }}>Операция</div>
               <div className="ia-toggle-row">
                 <button
                   type="button"
