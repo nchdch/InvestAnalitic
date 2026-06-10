@@ -1,5 +1,5 @@
-import { Layers, TrendingUp, CalendarClock, Banknote, PieChart } from 'lucide-react'
-import { Card, StatCard, Badge, PnLValue, BarChart } from '../components'
+import { Layers, TrendingUp, CalendarClock, Banknote, PieChart, Wallet, Activity, Percent, Target } from 'lucide-react'
+import { Card, StatCard, Badge, PnLValue, BarChart, DonutChart } from '../components'
 import { usePortfolio } from '../hooks/usePortfolio'
 import { useAnalytics } from '../hooks/useAnalytics'
 import { formatRub } from '../utils/format'
@@ -49,9 +49,12 @@ export function AnalyticsPage() {
   const loading = portfolioLoading || a.isLoading
 
   if (loading) return <div className="ia-screen"><Spinner /></div>
-  if (a.positionsCount === 0) {
+  if (!summary || a.positionsCount === 0) {
     return <div className="ia-screen"><Empty text="Недостаточно данных для аналитики — добавьте позиции в портфель, чтобы увидеть метрики качества." /></div>
   }
+
+  const prevValue = summary.totalValue - summary.dayChange
+  const dayChangePercent = prevValue !== 0 ? (summary.dayChange / prevValue) * 100 : null
 
   const chartData = a.monthlyIncome.map((m) => ({
     label: m.label,
@@ -63,6 +66,38 @@ export function AnalyticsPage() {
 
   return (
     <div className="ia-screen">
+      <div className="ia-an-top">
+        <Card title="Состав портфеля по бумагам" subtitle="Доля от текущей стоимости позиций">
+          <DonutChart data={a.composition} />
+        </Card>
+        <Card title="Портфель">
+          <div className="ia-an-quickstats">
+            <StatCard
+              label="Стоимость портфеля"
+              value={formatRub(summary.totalValue)}
+              icon={<Wallet size={15} />}
+            />
+            <StatCard
+              label="Изменение за день"
+              value={<PnLValue value={summary.dayChange} percent={dayChangePercent} display="both" size="lg" />}
+              icon={<Activity size={15} />}
+            />
+            <StatCard
+              label="Доходность портфеля"
+              value={<PnLValue value={summary.unrealizedPnl} percent={summary.unrealizedPnlPercent} display="percent" size="lg" />}
+              icon={<Percent size={15} />}
+              caption="Нереализованный P&L к вложенным средствам"
+            />
+            <StatCard
+              label="Альфа портфеля"
+              value="—"
+              icon={<Target size={15} />}
+              caption="Нет данных бенчмарка для расчёта"
+            />
+          </div>
+        </Card>
+      </div>
+
       <div className="ia-stats-grid">
         <Card>
           <StatCard
@@ -186,8 +221,9 @@ export function AnalyticsPage() {
         <div className="ia-eyebrow" style={{ marginBottom: 10 }}>Что пока не учитывается</div>
         <ul style={{ margin: 0, paddingLeft: 18, color: 'var(--text-3)', fontSize: 'var(--text-sm)', lineHeight: 1.7 }}>
           <li>P&amp;L за период (день / неделя / месяц / квартал / год) — нет исторических снимков портфеля</li>
-          <li>Секторальная концентрация — по эмитентам секторы пока не размечены</li>
-          <li>Сравнение с бенчмарком (IMOEX, RGBI) — данные бенчмарка не загружены</li>
+          <li>Карта по секторам — по эмитентам секторы пока не размечены</li>
+          <li>Топ движений рынка вне портфеля — нет источника котировок по всем бумагам биржи</li>
+          <li>Сравнение с бенчмарком (IMOEX, RGBI) и альфа портфеля — данные бенчмарка не загружены</li>
           <li>Форвардная дивидендная доходность — нет прогноза выплат на акцию</li>
         </ul>
       </Card>

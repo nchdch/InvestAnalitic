@@ -180,6 +180,8 @@
 .ia-cal-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
 
 /* ---- Analytics ---- */
+.ia-an-top { display: grid; grid-template-columns: 1.3fr 1fr; gap: 20px; align-items: stretch; }
+.ia-an-quickstats { display: flex; flex-direction: column; gap: 18px; }
 .ia-stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; }
 .ia-an-legend { display: flex; gap: 18px; margin-top: 12px; font-size: var(--text-sm); color: var(--text-2); }
 .ia-an-legend__item { display: flex; align-items: center; gap: 6px; }
@@ -229,7 +231,7 @@
 .ia-asset-accounts { grid-column: 1 / -1; padding-top: 18px; border-top: 1px solid var(--divider); margin-top: 4px; }
 
 @media (max-width: 1080px) {
-  .ia-grid-top, .ia-grid-reb, .ia-asset-main { grid-template-columns: 1fr; }
+  .ia-grid-top, .ia-grid-reb, .ia-asset-main, .ia-an-top { grid-template-columns: 1fr; }
 }
 
 /* ---- Mobile (≤768px) ---- */

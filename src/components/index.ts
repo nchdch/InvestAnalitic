@@ -40,6 +40,9 @@ export type { PriceChartProps } from './data/PriceChart'
 export { BarChart } from './data/BarChart'
 export type { BarChartProps, BarChartPoint, BarChartSegment } from './data/BarChart'
 
+export { DonutChart } from './data/DonutChart'
+export type { DonutChartProps, DonutChartSlice } from './data/DonutChart'
+
 export { Tabs } from './navigation/Tabs'
 export type { TabsProps, TabItem } from './navigation/Tabs'
 

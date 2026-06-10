@@ -21,6 +21,13 @@ export interface PortfolioPositionRow {
   unrealizedPnlPercent: number
 }
 
+export interface CompositionSlice {
+  label: string
+  value: number
+  weight: number
+  color: string
+}
+
 export interface UseAnalyticsResult {
   isLoading: boolean
   error: string | null
@@ -36,9 +43,21 @@ export interface UseAnalyticsResult {
   topPositions: PortfolioPositionRow[]
   topGainers: PortfolioPositionRow[]
   topLosers: PortfolioPositionRow[]
+  composition: CompositionSlice[]
 }
 
 const MONTH_LABELS = ['Янв', 'Фев', 'Мар', 'Апр', 'Май', 'Июн', 'Июл', 'Авг', 'Сен', 'Окт', 'Ноя', 'Дек']
+
+const COMPOSITION_COLORS = [
+  'var(--azure-500)',
+  'var(--violet-500)',
+  'var(--amber-500)',
+  'var(--gain-500)',
+  'var(--loss-500)',
+  'var(--azure-300)',
+]
+const COMPOSITION_OTHER_COLOR = 'var(--ink-300)'
+const COMPOSITION_TOP_N = 6
 
 /** Метрики качества портфеля: концентрация (HHI), YTM/срок облигаций, дивидендный поток за 12 мес, лидеры/аутсайдеры. */
 export function useAnalytics(accounts: AccountSummary[], totalValue: number): UseAnalyticsResult {
@@ -146,6 +165,24 @@ export function useAnalytics(accounts: AccountSummary[], totalValue: number): Us
   const topGainers = sortedByPnl.filter((p) => p.unrealizedPnlPercent > 0).slice(0, 5)
   const topLosers = sortedByPnl.filter((p) => p.unrealizedPnlPercent < 0).slice(-5).reverse()
 
+  const compositionTotal = positions.reduce((s, p) => s + p.currentValue, 0)
+  const sortedByValue = [...positions].sort((a, b) => b.currentValue - a.currentValue)
+  const composition: CompositionSlice[] = sortedByValue.slice(0, COMPOSITION_TOP_N).map((p, i) => ({
+    label: p.ticker,
+    value: p.currentValue,
+    weight: compositionTotal > 0 ? (p.currentValue / compositionTotal) * 100 : 0,
+    color: COMPOSITION_COLORS[i % COMPOSITION_COLORS.length],
+  }))
+  const restValue = sortedByValue.slice(COMPOSITION_TOP_N).reduce((s, p) => s + p.currentValue, 0)
+  if (restValue > 0) {
+    composition.push({
+      label: 'Остальное',
+      value: restValue,
+      weight: compositionTotal > 0 ? (restValue / compositionTotal) * 100 : 0,
+      color: COMPOSITION_OTHER_COLOR,
+    })
+  }
+
   return {
     isLoading, error,
     positionsCount: positions.length,
@@ -153,5 +190,6 @@ export function useAnalytics(accounts: AccountSummary[], totalValue: number): Us
     weightedYtm, weightedDaysToMaturity, bondValue,
     monthlyIncome, trailingIncome, trailingYield,
     topPositions, topGainers, topLosers,
+    composition,
   }
 }
