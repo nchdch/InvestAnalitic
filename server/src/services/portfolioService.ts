@@ -339,9 +339,14 @@ export async function refreshPrices(orgId?: string) {
       continue
     }
 
-    const price = p.exchange === 'MOEX'
+    let price = p.exchange === 'MOEX'
       ? await fetchMoexPrice(p.ticker, p.asset_type)
       : p.asset_type === 'equity' ? await fetchForeignPrice(p.ticker) : null
+
+    // MOEX не знает иностранный тикер (например, NVDA, UBER) — пробуем Finnhub как запасной источник
+    if (price == null && p.asset_type === 'equity' && p.exchange === 'MOEX') {
+      price = await fetchForeignPrice(p.ticker)
+    }
 
     if (price == null) {
       failed++

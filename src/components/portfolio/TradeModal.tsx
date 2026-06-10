@@ -23,6 +23,7 @@ interface FormState {
   ticker: string
   name: string
   assetType: 'equity' | 'bond'
+  exchange: string
   side: 'buy' | 'sell'
   quantity: string
   price: string
@@ -37,6 +38,7 @@ const EMPTY: FormState = {
   ticker: '',
   name: '',
   assetType: 'equity',
+  exchange: 'MOEX',
   side: 'buy',
   quantity: '',
   price: '',
@@ -169,6 +171,7 @@ export function TradeModal({ open, onClose }: Props) {
         currency: form.currency,
         exchangeRate: form.currency !== 'RUB' ? exchangeRate : undefined,
         assetType: form.assetType,
+        exchange: form.exchange,
         executedAt: form.executedAt ? new Date(form.executedAt).toISOString() : undefined,
       })
 
@@ -284,6 +287,7 @@ export function TradeModal({ open, onClose }: Props) {
                 set('name', s.shortName)
                 if (s.assetType) set('assetType', s.assetType)
                 set('currency', s.currency)
+                set('exchange', s.exchange)
               }}
             />
 
