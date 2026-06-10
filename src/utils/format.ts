@@ -20,3 +20,16 @@ export function formatRub(amount: number): string {
 export function formatPercent(value: number): string {
   return `${percentFormatter.format(value)}%`
 }
+
+const CURRENCY_SYMBOLS: Record<string, string> = { RUB: '₽', USD: '$', EUR: '€', CNY: '¥', GBP: '£' }
+
+const priceFormatter = new Intl.NumberFormat('ru-RU', {
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2,
+})
+
+/** Например: (208.19, 'USD') → "208,19 $" */
+export function formatPrice(amount: number, currency: string): string {
+  const symbol = CURRENCY_SYMBOLS[currency] ?? currency
+  return `${priceFormatter.format(amount)} ${symbol}`
+}

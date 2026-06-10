@@ -176,8 +176,51 @@
 /* ---- Calendar ---- */
 .ia-cal-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
 
+/* ---- Asset detail ---- */
+.ia-back {
+  display: inline-flex; align-items: center; gap: 6px; align-self: flex-start;
+  border: 0; background: transparent; cursor: pointer; font-family: inherit;
+  font-size: var(--text-sm); font-weight: var(--fw-medium); color: var(--text-3);
+  padding: 4px 0; transition: color var(--dur-fast) var(--ease-out);
+}
+.ia-back:hover { color: var(--text-1); }
+.ia-asset-head { display: flex; align-items: center; gap: 16px; }
+.ia-asset-head__main { flex: 1; min-width: 0; }
+.ia-asset-head__title { font-size: var(--text-h3); font-weight: var(--fw-bold); color: var(--text-1); }
+.ia-asset-head__name { font-size: var(--text-h4); font-weight: var(--fw-medium); color: var(--text-3); }
+.ia-asset-head__isin { font-size: var(--text-xs); color: var(--text-4); margin-top: 3px; }
+.ia-asset-head__price { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; flex: none; }
+.ia-asset-head__pricenum { font-size: var(--text-h3); font-weight: var(--fw-bold); color: var(--text-1); }
+.ia-asset-main { display: grid; grid-template-columns: 280px 1fr; gap: 28px; padding: 20px; }
+.ia-asset-stats { display: flex; flex-direction: column; gap: 2px; }
+.ia-stat-row { display: flex; justify-content: space-between; gap: 12px; padding: 7px 0; border-bottom: 1px solid var(--divider); font-size: var(--text-sm); }
+.ia-stat-row:last-child { border-bottom: 0; }
+.ia-stat-row__label { color: var(--text-3); }
+.ia-stat-row__value { color: var(--text-1); font-weight: var(--fw-semibold); font-variant-numeric: tabular-nums; text-align: right; }
+.ia-asset-chart { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+.ia-asset-chart__ranges { display: flex; gap: 4px; }
+.ia-rangebtn {
+  border: 0; background: transparent; cursor: pointer; font-family: inherit;
+  font-size: var(--text-xs); font-weight: var(--fw-medium); color: var(--text-3);
+  padding: 5px 11px; border-radius: var(--radius-pill);
+  transition: background var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
+}
+.ia-rangebtn:hover { color: var(--text-1); background: var(--surface-sunken); }
+.ia-rangebtn.is-active { color: var(--accent); background: var(--accent-soft); font-weight: var(--fw-semibold); }
+.ia-asset-perf { display: flex; flex-wrap: wrap; gap: 8px; }
+.ia-perfchip {
+  display: flex; flex-direction: column; align-items: center; gap: 2px;
+  padding: 8px 12px; border-radius: var(--radius-md); background: var(--surface-sunken);
+  min-width: 64px;
+}
+.ia-perfchip__pct { font-family: var(--font-mono); font-size: var(--text-sm); font-weight: var(--fw-semibold); color: var(--pnl-flat); }
+.ia-perfchip__label { font-size: var(--text-2xs); color: var(--text-3); }
+.ia-perfchip.is-up .ia-perfchip__pct { color: var(--pnl-up); }
+.ia-perfchip.is-down .ia-perfchip__pct { color: var(--pnl-down); }
+.ia-asset-accounts { grid-column: 1 / -1; padding-top: 18px; border-top: 1px solid var(--divider); margin-top: 4px; }
+
 @media (max-width: 1080px) {
-  .ia-grid-top, .ia-grid-reb { grid-template-columns: 1fr; }
+  .ia-grid-top, .ia-grid-reb, .ia-asset-main { grid-template-columns: 1fr; }
 }
 
 /* ---- Auth pages ---- */

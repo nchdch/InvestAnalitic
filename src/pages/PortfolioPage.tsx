@@ -5,6 +5,7 @@ import { usePortfolio } from '../hooks/usePortfolio'
 import { usePortfolioStore } from '../store/portfolioStore'
 import { getPriceHistory } from '../api/client'
 import { getTickerLogoUrl } from '../utils/logos'
+import { AssetDetailPage } from './AssetDetailPage'
 import type { AccountSummary } from '@/types'
 
 const RUB = new Intl.NumberFormat('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
@@ -52,7 +53,7 @@ function DashCell({ value, percent }: { value: number | null; percent?: number |
   return <PnLValue value={value} display="money" size="sm" />
 }
 
-function SummaryReportTable({ accounts, totalValue }: { accounts: AccountSummary[]; totalValue: number }) {
+function SummaryReportTable({ accounts, totalValue, onSelectTicker }: { accounts: AccountSummary[]; totalValue: number; onSelectTicker: (ticker: string) => void }) {
   // expandedAccounts: какие портфели раскрыты
   const [expandedAccounts, setExpandedAccounts] = useState<Set<string>>(
     new Set(accounts.map((a) => a.id))
@@ -152,7 +153,11 @@ function SummaryReportTable({ accounts, totalValue }: { accounts: AccountSummary
               {accOpen && eqOpen && acc.equityRows.map((row) => {
                 const share = totalValue > 0 ? (row.currentValue / totalValue) * 100 : 0
                 return (
-                  <tr key={row.position.id} style={{ opacity: 0.95 }}>
+                  <tr
+                    key={row.position.id}
+                    style={{ opacity: 0.95, cursor: 'pointer' }}
+                    onClick={() => onSelectTicker(row.position.ticker)}
+                  >
                     <td style={{ paddingLeft: 56 }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                         <Avatar name={row.position.ticker} src={getTickerLogoUrl(row.position.ticker, 'equity')} size="sm" />
@@ -341,6 +346,7 @@ export function PortfolioPage() {
   const selectedAccountId = usePortfolioStore((s) => s.selectedAccountId)
   const setSelectedAccountId = usePortfolioStore((s) => s.setSelectedAccountId)
   const [priceHistory, setPriceHistory] = useState<Record<string, number[]>>({})
+  const [selectedTicker, setSelectedTicker] = useState<string | null>(null)
   const fetchedTickersRef = useRef<Set<string>>(new Set())
 
   useEffect(() => {
@@ -381,6 +387,10 @@ export function PortfolioPage() {
 
   const selectedAccount = selectedAccountId ? accounts.find((a) => a.id === selectedAccountId) ?? null : null
   const filteredAccounts = selectedAccount ? [selectedAccount] : accounts
+
+  if (selectedTicker) {
+    return <AssetDetailPage ticker={selectedTicker} accounts={filteredAccounts} onBack={() => setSelectedTicker(null)} />
+  }
 
   const allEquities = filteredAccounts.flatMap((a) => a.equityRows)
   const allBonds = filteredAccounts.flatMap((a) => a.bondRows)
@@ -498,7 +508,7 @@ export function PortfolioPage() {
 
         {/* ── Сводный отчёт ── */}
         {tab === 'summary' && (
-          <SummaryReportTable accounts={filteredAccounts} totalValue={viewSummary.totalValue} />
+          <SummaryReportTable accounts={filteredAccounts} totalValue={viewSummary.totalValue} onSelectTicker={setSelectedTicker} />
         )}
 
         {/* ── Все активы ── */}
@@ -527,7 +537,7 @@ export function PortfolioPage() {
                 </thead>
                 <tbody>
                   {allEquities.map((row) => (
-                    <tr key={row.position.id}>
+                    <tr key={row.position.id} style={{ cursor: 'pointer' }} onClick={() => setSelectedTicker(row.position.ticker)}>
                       <td>
                         <div className="ia-cell-tk">
                           <Avatar name={row.position.ticker} src={getTickerLogoUrl(row.position.ticker, 'equity')} size="sm" />

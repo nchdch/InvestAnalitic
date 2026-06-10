@@ -82,6 +82,8 @@ export async function price(req: Request, res: Response): Promise<void> {
 export async function history(req: Request, res: Response): Promise<void> {
   const ticker = (req.query.ticker as string | undefined)?.trim().toUpperCase()
   const assetType = (req.query.assetType as string | undefined) === 'bond' ? 'bond' : 'equity'
+  const daysParam = Number(req.query.days)
+  const days = Number.isFinite(daysParam) && daysParam > 0 ? daysParam : 30
 
   if (!ticker) {
     res.status(400).json({ error: 'ticker is required' })
@@ -89,8 +91,8 @@ export async function history(req: Request, res: Response): Promise<void> {
   }
 
   try {
-    const prices = await fetchPriceHistory(ticker, assetType)
-    res.json({ ticker, prices })
+    const { dates, prices } = await fetchPriceHistory(ticker, assetType, days)
+    res.json({ ticker, dates, prices })
   } catch (err) {
     console.error('price history error:', err)
     res.status(502).json({ error: 'Ошибка получения истории цен' })

@@ -34,6 +34,9 @@ export type { AvatarProps } from './data/Avatar'
 export { Sparkline } from './data/Sparkline'
 export type { SparklineProps } from './data/Sparkline'
 
+export { PriceChart } from './data/PriceChart'
+export type { PriceChartProps } from './data/PriceChart'
+
 export { Tabs } from './navigation/Tabs'
 export type { TabsProps, TabItem } from './navigation/Tabs'
 

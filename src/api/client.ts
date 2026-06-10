@@ -164,10 +164,12 @@ export function getExchangeRate(currency: string): Promise<ExchangeRateResult> {
 
 export interface PriceHistoryResult {
   ticker: string
+  dates: string[]
   prices: number[]
 }
-export function getPriceHistory(ticker: string, assetType: 'equity' | 'bond' = 'equity'): Promise<PriceHistoryResult> {
-  return request<PriceHistoryResult>(`/securities/history?ticker=${encodeURIComponent(ticker)}&assetType=${assetType}`)
+export function getPriceHistory(ticker: string, assetType: 'equity' | 'bond' = 'equity', days?: number): Promise<PriceHistoryResult> {
+  const d = days ? `&days=${days}` : ''
+  return request<PriceHistoryResult>(`/securities/history?ticker=${encodeURIComponent(ticker)}&assetType=${assetType}${d}`)
 }
 
 export interface SecurityPriceResult {
