@@ -16,7 +16,7 @@ const CSS = `
 .ia-card__sub{ font-size:var(--text-sm); color:var(--text-3); margin:2px 0 0; }
 .ia-card__actions{ margin-left:auto; display:flex; align-items:center; gap:6px; }
 .ia-card__body{ padding:20px; }
-.ia-card__body--tight{ padding:0; }
+.ia-card__body--tight{ padding:0; overflow-x:auto; }
 `
 
 export interface CardProps extends React.HTMLAttributes<HTMLDivElement> {

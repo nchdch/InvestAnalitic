@@ -74,4 +74,9 @@ export const MODAL_CSS = `
 .ia-import-result svg { color: var(--positive); }
 .ia-import-result__title { font-size: var(--text-h4); font-weight: var(--fw-bold); color: var(--text-1); }
 .ia-import-result__sub { color: var(--text-2); margin-top: 4px; }
+
+@media (max-width: 480px) {
+  .ia-modal-backdrop { padding: 12px; }
+  .ia-field-row { grid-template-columns: 1fr; }
+}
 `

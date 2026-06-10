@@ -2,7 +2,7 @@
 import { useNavigate } from 'react-router-dom'
 import logoMark from '../assets/logo-mark.svg'
 import { Button, IconButton, Avatar } from '../components'
-import { LayoutDashboard, Sparkles, Scale, Calendar, Plus, Bell, Search, Settings, LogOut, Building2, ChevronDown, ChevronUp, ArrowUpRight, ArrowDownRight, Layers, TrendingUp, Wallet, Upload, Sun, Moon } from 'lucide-react'
+import { LayoutDashboard, Sparkles, Scale, Calendar, History, PieChart, Plus, Bell, Search, Settings, LogOut, Building2, ChevronDown, ChevronUp, ArrowUpRight, ArrowDownRight, Layers, TrendingUp, Wallet, Upload, Sun, Moon, Menu } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { usePortfolio } from '../hooks/usePortfolio'
 import { useAuthStore } from '../store/authStore'
@@ -26,9 +26,11 @@ const NAV_ITEMS: NavItem[] = [
   { id: 'assistant', label: 'ИИ-аналитик',    Icon: Sparkles, pip: true },
   { id: 'rebalance', label: 'Ребалансировка', Icon: Scale },
   { id: 'calendar',  label: 'Выплаты',        Icon: Calendar },
+  { id: 'trades',    label: 'История сделок', Icon: History },
+  { id: 'analytics', label: 'Аналитика',      Icon: PieChart },
 ]
 
-export type PageId = 'dashboard' | 'assistant' | 'rebalance' | 'calendar'
+export type PageId = 'dashboard' | 'assistant' | 'rebalance' | 'calendar' | 'trades' | 'analytics'
 
 interface Props {
   page: PageId
@@ -45,6 +47,8 @@ const PAGE_TITLE: Record<PageId, { title: string; sub: string }> = {
   assistant:  { title: 'ИИ-аналитик',   sub: 'Спрашивай, добавляй сделки, получай разбор' },
   rebalance:  { title: 'Ребалансировка', sub: 'Целевые веса и план сделок' },
   calendar:   { title: 'Выплаты',       sub: 'Дивиденды и купоны' },
+  trades:     { title: 'История сделок', sub: 'Все операции по портфелям' },
+  analytics:  { title: 'Аналитика',     sub: 'Качество портфеля и доходность' },
 }
 
 export function AppShell({ page, onNav, onAddTrade, onAddPortfolio, onAddDeposit, onImportTrades, children }: Props) {
@@ -63,6 +67,7 @@ export function AppShell({ page, onNav, onAddTrade, onAddPortfolio, onAddDeposit
   const dropdownRef = useRef<HTMLDivElement>(null)
   const [actionOpen, setActionOpen] = useState(false)
   const actionRef = useRef<HTMLDivElement>(null)
+  const [mobileNavOpen, setMobileNavOpen] = useState(false)
 
   // Подтягиваем актуальные котировки при загрузке и при смене активного портфеля
   useEffect(() => {
@@ -109,7 +114,8 @@ export function AppShell({ page, onNav, onAddTrade, onAddPortfolio, onAddDeposit
 
   return (
     <div className="ia-app">
-      <aside className="ia-sidebar">
+      {mobileNavOpen && <div className="ia-sidebar-overlay" onClick={() => setMobileNavOpen(false)} />}
+      <aside className={'ia-sidebar' + (mobileNavOpen ? ' is-open' : '')}>
         <div className="ia-sidebar__brand">
           <img src={logoMark} alt="" width={32} height={32} />
           <span className="ia-sidebar__word">Invest<b>Analitic</b></span>
@@ -146,7 +152,7 @@ export function AppShell({ page, onNav, onAddTrade, onAddPortfolio, onAddDeposit
             <button
               key={id}
               className={'ia-navitem' + (page === id ? ' is-active' : '')}
-              onClick={() => onNav(id as PageId)}
+              onClick={() => { onNav(id as PageId); setMobileNavOpen(false) }}
             >
               <Icon size={18} />
               <span>{label}</span>
@@ -209,9 +215,19 @@ export function AppShell({ page, onNav, onAddTrade, onAddPortfolio, onAddDeposit
 
       <main className="ia-main">
         <header className="ia-topbar">
-          <div>
-            <h1 className="ia-topbar__title">{PAGE_TITLE[page].title}</h1>
-            <p className="ia-topbar__sub">{PAGE_TITLE[page].sub}</p>
+          <div className="ia-topbar__left">
+            <IconButton
+              className="ia-menu-toggle"
+              variant="outlined"
+              label="Открыть меню"
+              onClick={() => setMobileNavOpen(true)}
+            >
+              <Menu size={18} />
+            </IconButton>
+            <div>
+              <h1 className="ia-topbar__title">{PAGE_TITLE[page].title}</h1>
+              <p className="ia-topbar__sub">{PAGE_TITLE[page].sub}</p>
+            </div>
           </div>
           <div className="ia-topbar__actions">
             <div className="ia-search">
