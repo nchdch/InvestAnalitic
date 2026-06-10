@@ -28,10 +28,18 @@ export interface CompositionSlice {
   color: string
 }
 
+/** Фильтры аналитики: портфель (счёт), тип актива, конкретная бумага. 'all' — без ограничения. */
+export interface AnalyticsFilters {
+  accountId: string
+  assetType: 'all' | AssetType
+  ticker: string
+}
+
 export interface UseAnalyticsResult {
   isLoading: boolean
   error: string | null
   positionsCount: number
+  positionsValue: number
   hhi: number | null
   hhiLevel: 'low' | 'moderate' | 'high' | null
   weightedYtm: number | null
@@ -59,8 +67,10 @@ const COMPOSITION_COLORS = [
 const COMPOSITION_OTHER_COLOR = 'var(--ink-300)'
 const COMPOSITION_TOP_N = 6
 
+export const ANALYTICS_FILTERS_DEFAULT: AnalyticsFilters = { accountId: 'all', assetType: 'all', ticker: 'all' }
+
 /** Метрики качества портфеля: концентрация (HHI), YTM/срок облигаций, дивидендный поток за 12 мес, лидеры/аутсайдеры. */
-export function useAnalytics(accounts: AccountSummary[], totalValue: number): UseAnalyticsResult {
+export function useAnalytics(accounts: AccountSummary[], filters: AnalyticsFilters = ANALYTICS_FILTERS_DEFAULT): UseAnalyticsResult {
   const accountsKey = accounts.map((a) => `${a.id}:${a.name}`).join(',')
   const [payments, setPayments] = useState<Payment[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -86,28 +96,41 @@ export function useAnalytics(accounts: AccountSummary[], totalValue: number): Us
     return () => { cancelled = true }
   }, [accountsKey])
 
-  const positions = useMemo<PortfolioPositionRow[]>(() => accounts.flatMap((a) => [
-    ...a.equityRows.map((r): PortfolioPositionRow => ({
+  const filteredAccounts = filters.accountId === 'all'
+    ? accounts
+    : accounts.filter((a) => a.id === filters.accountId)
+
+  const tickerMatches = (ticker: string) => filters.ticker === 'all' || ticker === filters.ticker
+  const includesAssetType = (type: AssetType) => filters.assetType === 'all' || filters.assetType === type
+
+  const rawPositions = useMemo(() => filteredAccounts.flatMap((a) => [
+    ...(includesAssetType('equity') ? a.equityRows.filter((r) => tickerMatches(r.position.ticker)).map((r): PortfolioPositionRow => ({
       ticker: r.position.ticker,
       name: r.position.name,
       assetType: 'equity',
       accountName: a.name,
       currentValue: r.currentValue,
-      portfolioWeight: r.portfolioWeight,
+      portfolioWeight: 0,
       unrealizedPnl: r.unrealizedPnl,
       unrealizedPnlPercent: r.unrealizedPnlPercent,
-    })),
-    ...a.bondRows.map((r): PortfolioPositionRow => ({
+    })) : []),
+    ...(includesAssetType('bond') ? a.bondRows.filter((r) => tickerMatches(r.position.ticker)).map((r): PortfolioPositionRow => ({
       ticker: r.position.ticker,
       name: r.position.name,
       assetType: 'bond',
       accountName: a.name,
       currentValue: r.currentValue,
-      portfolioWeight: r.portfolioWeight,
+      portfolioWeight: 0,
       unrealizedPnl: r.unrealizedPnl,
       unrealizedPnlPercent: r.unrealizedPnlPercent,
-    })),
-  ]), [accounts])
+    })) : []),
+  ]), [filteredAccounts, filters.assetType, filters.ticker])
+
+  const positionsValue = rawPositions.reduce((s, p) => s + p.currentValue, 0)
+  const positions = rawPositions.map((p) => ({
+    ...p,
+    portfolioWeight: positionsValue > 0 ? (p.currentValue / positionsValue) * 100 : 0,
+  }))
 
   const hhi = positions.length > 0
     ? positions.reduce((s, p) => s + (p.portfolioWeight / 100) ** 2, 0)
@@ -118,7 +141,9 @@ export function useAnalytics(accounts: AccountSummary[], totalValue: number): Us
     : hhi < 0.25 ? 'moderate'
     : 'high'
 
-  const allBonds = accounts.flatMap((a) => a.bondRows)
+  const allBonds = includesAssetType('bond')
+    ? filteredAccounts.flatMap((a) => a.bondRows.filter((r) => tickerMatches(r.position.ticker)))
+    : []
   const bondValue = allBonds.reduce((s, r) => s + r.currentValue, 0)
 
   const ytmRows = allBonds.filter((r) => r.ytm != null)
@@ -130,6 +155,13 @@ export function useAnalytics(accounts: AccountSummary[], totalValue: number): Us
   const weightedDaysToMaturity = bondValue > 0 && maturityRows.length > 0
     ? maturityRows.reduce((s, r) => s + (r.daysToMaturity as number) * r.currentValue, 0) / bondValue
     : null
+
+  const filteredAccountIds = new Set(filteredAccounts.map((a) => a.id))
+  const relevantPayments = payments.filter((p) =>
+    filteredAccountIds.has(p.accountId) &&
+    tickerMatches(p.ticker) &&
+    (filters.assetType === 'all' || (filters.assetType === 'equity' ? p.type === 'dividend' : p.type === 'coupon'))
+  )
 
   const monthlyIncome = useMemo<MonthlyIncomePoint[]>(() => {
     const now = new Date()
@@ -145,7 +177,7 @@ export function useAnalytics(accounts: AccountSummary[], totalValue: number): Us
         total: 0,
       })
     }
-    for (const p of payments) {
+    for (const p of relevantPayments) {
       const bucket = buckets.get(p.paymentDate.slice(0, 7))
       if (!bucket) continue
       if (p.type === 'dividend') bucket.dividends += p.netAmount
@@ -153,10 +185,10 @@ export function useAnalytics(accounts: AccountSummary[], totalValue: number): Us
       bucket.total += p.netAmount
     }
     return Array.from(buckets.values())
-  }, [payments])
+  }, [relevantPayments])
 
   const trailingIncome = monthlyIncome.reduce((s, m) => s + m.total, 0)
-  const trailingYield = totalValue > 0 ? (trailingIncome / totalValue) * 100 : null
+  const trailingYield = positionsValue > 0 ? (trailingIncome / positionsValue) * 100 : null
 
   const sortedByWeight = [...positions].sort((a, b) => b.portfolioWeight - a.portfolioWeight)
   const topPositions = sortedByWeight.slice(0, 5)
@@ -165,12 +197,11 @@ export function useAnalytics(accounts: AccountSummary[], totalValue: number): Us
   const topGainers = sortedByPnl.filter((p) => p.unrealizedPnlPercent > 0).slice(0, 5)
   const topLosers = sortedByPnl.filter((p) => p.unrealizedPnlPercent < 0).slice(-5).reverse()
 
-  const compositionTotal = positions.reduce((s, p) => s + p.currentValue, 0)
   const sortedByValue = [...positions].sort((a, b) => b.currentValue - a.currentValue)
   const composition: CompositionSlice[] = sortedByValue.slice(0, COMPOSITION_TOP_N).map((p, i) => ({
     label: p.ticker,
     value: p.currentValue,
-    weight: compositionTotal > 0 ? (p.currentValue / compositionTotal) * 100 : 0,
+    weight: p.portfolioWeight,
     color: COMPOSITION_COLORS[i % COMPOSITION_COLORS.length],
   }))
   const restValue = sortedByValue.slice(COMPOSITION_TOP_N).reduce((s, p) => s + p.currentValue, 0)
@@ -178,7 +209,7 @@ export function useAnalytics(accounts: AccountSummary[], totalValue: number): Us
     composition.push({
       label: 'Остальное',
       value: restValue,
-      weight: compositionTotal > 0 ? (restValue / compositionTotal) * 100 : 0,
+      weight: positionsValue > 0 ? (restValue / positionsValue) * 100 : 0,
       color: COMPOSITION_OTHER_COLOR,
     })
   }
@@ -186,6 +217,7 @@ export function useAnalytics(accounts: AccountSummary[], totalValue: number): Us
   return {
     isLoading, error,
     positionsCount: positions.length,
+    positionsValue,
     hhi, hhiLevel,
     weightedYtm, weightedDaysToMaturity, bondValue,
     monthlyIncome, trailingIncome, trailingYield,

@@ -1,7 +1,9 @@
+import { useEffect, useMemo, useState } from 'react'
 import { Layers, TrendingUp, CalendarClock, Banknote, PieChart, Wallet, Activity, Percent, Target } from 'lucide-react'
-import { Card, StatCard, Badge, PnLValue, BarChart, DonutChart } from '../components'
+import { Card, StatCard, Badge, PnLValue, BarChart, DonutChart, Select } from '../components'
 import { usePortfolio } from '../hooks/usePortfolio'
-import { useAnalytics } from '../hooks/useAnalytics'
+import { useAnalytics, ANALYTICS_FILTERS_DEFAULT } from '../hooks/useAnalytics'
+import type { AnalyticsFilters } from '../hooks/useAnalytics'
 import { formatRub } from '../utils/format'
 import type { AssetType } from '@/types'
 
@@ -45,16 +47,52 @@ function Empty({ text }: { text: string }) {
 
 export function AnalyticsPage() {
   const { summary, accounts, isLoading: portfolioLoading } = usePortfolio()
-  const a = useAnalytics(accounts, summary?.totalValue ?? 0)
+  const [filters, setFilters] = useState<AnalyticsFilters>(ANALYTICS_FILTERS_DEFAULT)
+  const a = useAnalytics(accounts, filters)
   const loading = portfolioLoading || a.isLoading
 
+  const accountOptions = useMemo(() => [
+    { value: 'all', label: 'Все портфели' },
+    ...accounts.map((acc) => ({ value: acc.id, label: acc.name })),
+  ], [accounts])
+
+  const accountsForTickers = filters.accountId === 'all'
+    ? accounts
+    : accounts.filter((acc) => acc.id === filters.accountId)
+
+  const tickerOptions = useMemo(() => {
+    const set = new Set<string>()
+    for (const acc of accountsForTickers) {
+      if (filters.assetType !== 'bond') for (const r of acc.equityRows) set.add(r.position.ticker)
+      if (filters.assetType !== 'equity') for (const r of acc.bondRows) set.add(r.position.ticker)
+    }
+    return [{ value: 'all', label: 'Все бумаги' }, ...Array.from(set).sort().map((t) => ({ value: t, label: t }))]
+  }, [accountsForTickers, filters.assetType])
+
+  const tickerOptionsKey = tickerOptions.map((o) => o.value).join(',')
+  useEffect(() => {
+    if (filters.ticker !== 'all' && !tickerOptionsKey.split(',').includes(filters.ticker)) {
+      setFilters((f) => ({ ...f, ticker: 'all' }))
+    }
+  }, [tickerOptionsKey, filters.ticker])
+
+  const globalPositionsCount = accounts.reduce((s, acc) => s + acc.equityRows.length + acc.bondRows.length, 0)
+
   if (loading) return <div className="ia-screen"><Spinner /></div>
-  if (!summary || a.positionsCount === 0) {
+  if (!summary || globalPositionsCount === 0) {
     return <div className="ia-screen"><Empty text="Недостаточно данных для аналитики — добавьте позиции в портфель, чтобы увидеть метрики качества." /></div>
   }
 
-  const prevValue = summary.totalValue - summary.dayChange
-  const dayChangePercent = prevValue !== 0 ? (summary.dayChange / prevValue) * 100 : null
+  const filtersActive = filters.accountId !== 'all' || filters.assetType !== 'all' || filters.ticker !== 'all'
+  const selectedAccount = filters.accountId === 'all' ? null : accounts.find((acc) => acc.id === filters.accountId) ?? null
+
+  const baseTotalValue = selectedAccount ? selectedAccount.totalValue : summary.totalValue
+  const baseDayChange = selectedAccount ? selectedAccount.dayChange : summary.dayChange
+  const baseUnrealizedPnl = selectedAccount ? selectedAccount.unrealizedPnl : summary.unrealizedPnl
+  const baseUnrealizedPnlPercent = selectedAccount ? selectedAccount.unrealizedPnlPercent : summary.unrealizedPnlPercent
+
+  const prevValue = baseTotalValue - baseDayChange
+  const dayChangePercent = prevValue !== 0 ? (baseDayChange / prevValue) * 100 : null
 
   const chartData = a.monthlyIncome.map((m) => ({
     label: m.label,
@@ -66,25 +104,62 @@ export function AnalyticsPage() {
 
   return (
     <div className="ia-screen">
+      <Card tightBody>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12, padding: '16px 20px' }}>
+          <div>
+            <div className="ia-eyebrow">Фильтры аналитики</div>
+            {filtersActive && (
+              <div style={{ marginTop: 4, color: 'var(--text-3)', fontSize: 'var(--text-sm)' }}>
+                В выборке: {a.positionsCount} поз. на {formatRub(a.positionsValue)}
+              </div>
+            )}
+          </div>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <Select
+              size="sm"
+              value={filters.accountId}
+              onChange={(e) => setFilters((f) => ({ ...f, accountId: e.target.value }))}
+              options={accountOptions}
+            />
+            <Select
+              size="sm"
+              value={filters.assetType}
+              onChange={(e) => setFilters((f) => ({ ...f, assetType: e.target.value as AnalyticsFilters['assetType'] }))}
+              options={[
+                { value: 'all', label: 'Все типы' },
+                { value: 'equity', label: 'Акции' },
+                { value: 'bond', label: 'Облигации' },
+              ]}
+            />
+            <Select
+              size="sm"
+              value={filters.ticker}
+              onChange={(e) => setFilters((f) => ({ ...f, ticker: e.target.value }))}
+              options={tickerOptions}
+            />
+          </div>
+        </div>
+      </Card>
+
       <div className="ia-an-top">
         <Card title="Состав портфеля по бумагам" subtitle="Доля от текущей стоимости позиций">
           <DonutChart data={a.composition} />
         </Card>
-        <Card title="Портфель">
+        <Card title={selectedAccount ? `Портфель «${selectedAccount.name}»` : 'Портфель'}>
           <div className="ia-an-quickstats">
             <StatCard
               label="Стоимость портфеля"
-              value={formatRub(summary.totalValue)}
+              value={formatRub(baseTotalValue)}
               icon={<Wallet size={15} />}
             />
             <StatCard
               label="Изменение за день"
-              value={<PnLValue value={summary.dayChange} percent={dayChangePercent} display="both" size="lg" />}
+              value={<PnLValue value={baseDayChange} percent={dayChangePercent} display="both" size="lg" />}
               icon={<Activity size={15} />}
             />
             <StatCard
               label="Доходность портфеля"
-              value={<PnLValue value={summary.unrealizedPnl} percent={summary.unrealizedPnlPercent} display="percent" size="lg" />}
+              value={<PnLValue value={baseUnrealizedPnl} percent={baseUnrealizedPnlPercent} display="percent" size="lg" />}
               icon={<Percent size={15} />}
               caption="Нереализованный P&L к вложенным средствам"
             />
@@ -149,7 +224,7 @@ export function AnalyticsPage() {
       </Card>
 
       <Card title="Топ позиций по весу" tightBody>
-        {a.topPositions.length === 0 ? <Empty text="Нет позиций" /> : (
+        {a.topPositions.length === 0 ? <Empty text={filtersActive ? 'Нет позиций по выбранным фильтрам' : 'Нет позиций'} /> : (
           <table className="ia-table">
             <thead>
               <tr>
