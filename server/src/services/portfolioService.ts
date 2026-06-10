@@ -1,6 +1,7 @@
 ﻿import { pool } from '../db/pool.js'
 import { updatePosition } from './positionService.js'
 import { fetchMoexPrice } from './moexService.js'
+import { fetchForeignPrice } from './foreignMarketService.js'
 import { listCashBalances } from './cashService.js'
 import { fetchRubRate } from './fxService.js'
 
@@ -315,7 +316,7 @@ export async function getPortfolioSummary(orgId?: string) {
   }
 }
 
-/** Подтягивает текущие котировки с MOEX и обновляет last_price у позиций портфеля. */
+/** Подтягивает текущие котировки с MOEX (для российских бумаг) и Yahoo Finance (для иностранных акций) и обновляет last_price у позиций портфеля. */
 export async function refreshPrices(orgId?: string) {
   const { rows: accounts } = orgId
     ? await pool.query<{ id: string }>('SELECT id FROM accounts WHERE org_id = $1', [orgId])
@@ -333,11 +334,15 @@ export async function refreshPrices(orgId?: string) {
   let failed = 0
 
   for (const p of positions) {
-    if (p.exchange !== 'MOEX' || (p.asset_type !== 'equity' && p.asset_type !== 'bond')) {
+    if (p.asset_type !== 'equity' && p.asset_type !== 'bond') {
       failed++
       continue
     }
-    const price = await fetchMoexPrice(p.ticker, p.asset_type)
+
+    const price = p.exchange === 'MOEX'
+      ? await fetchMoexPrice(p.ticker, p.asset_type)
+      : p.asset_type === 'equity' ? await fetchForeignPrice(p.ticker) : null
+
     if (price == null) {
       failed++
       continue

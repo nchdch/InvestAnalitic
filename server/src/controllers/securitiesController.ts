@@ -2,6 +2,7 @@ import type { Request, Response } from 'express'
 import { fetchRubRate } from '../services/fxService.js'
 import { fetchPriceHistory } from '../services/marketHistoryService.js'
 import { fetchMoexPrice } from '../services/moexService.js'
+import { fetchForeignQuote, fetchForeignPriceHistory, searchForeignSecurities } from '../services/foreignMarketService.js'
 
 interface MoexResponse {
   securities: {
@@ -68,11 +69,20 @@ export async function price(req: Request, res: Response): Promise<void> {
 
   try {
     const value = await fetchMoexPrice(ticker, assetType)
-    if (value == null) {
-      res.status(404).json({ error: `Цена ${ticker} не найдена` })
+    if (value != null) {
+      res.json({ ticker, price: value })
       return
     }
-    res.json({ ticker, price: value })
+
+    if (assetType === 'equity') {
+      const foreign = await fetchForeignQuote(ticker)
+      if (foreign) {
+        res.json({ ticker, price: foreign.price, currency: foreign.currency })
+        return
+      }
+    }
+
+    res.status(404).json({ error: `Цена ${ticker} не найдена` })
   } catch (err) {
     console.error('security price error:', err)
     res.status(502).json({ error: 'Ошибка получения цены инструмента' })
@@ -91,14 +101,70 @@ export async function history(req: Request, res: Response): Promise<void> {
   }
 
   try {
-    const { dates, prices } = await fetchPriceHistory(ticker, assetType, days)
-    res.json({ ticker, dates, prices })
+    const moex = await fetchPriceHistory(ticker, assetType, days)
+    if (moex.dates.length > 0) {
+      res.json({ ticker, dates: moex.dates, prices: moex.prices })
+      return
+    }
+
+    if (assetType === 'equity') {
+      const foreign = await fetchForeignPriceHistory(ticker, days)
+      if (foreign.dates.length > 0) {
+        res.json({ ticker, dates: foreign.dates, prices: foreign.prices })
+        return
+      }
+    }
+
+    res.json({ ticker, dates: [], prices: [] })
   } catch (err) {
     console.error('price history error:', err)
     res.status(502).json({ error: 'Ошибка получения истории цен' })
   }
 }
 
+async function searchMoex(q: string): Promise<SecurityResult[]> {
+  const url = `https://iss.moex.com/iss/securities.json?q=${encodeURIComponent(q)}&limit=20&iss.meta=off&is_trading=1`
+  const upstream = await fetch(url, {
+    headers: { 'User-Agent': 'InvestAnalitic/1.0' },
+    signal: AbortSignal.timeout(5000),
+  })
+  if (!upstream.ok) return []
+
+  const body = (await upstream.json()) as MoexResponse
+  const cols = body.securities?.columns ?? []
+  const data = body.securities?.data ?? []
+
+  const idx = (name: string) => cols.indexOf(name)
+  const iTicker = idx('secid')
+  const iShort  = idx('shortname')
+  const iName   = idx('name')
+  const iIsin   = idx('isin')
+  const iTraded = idx('is_traded')
+  const iGroup  = idx('group')
+  const iBoard  = idx('primary_boardid')
+
+  return data
+    .filter((row) => (row[iTraded] as number) === 1)
+    .map((row): SecurityResult => {
+      const ticker = String(row[iTicker] ?? '')
+      const group  = String(row[iGroup]  ?? '')
+      const board  = String(row[iBoard]  ?? '')
+      return {
+        ticker,
+        shortName: String(row[iShort] ?? ticker),
+        fullName:  String(row[iName]  ?? ticker),
+        isin:      row[iIsin] ? String(row[iIsin]) : null,
+        assetType: detectAssetType(group),
+        currency:  detectCurrency(board),
+        exchange:  detectExchange(board),
+        isTraded:  true,
+      }
+    })
+    .filter((r) => r.ticker && r.assetType !== null)
+    .slice(0, 12)
+}
+
+/** Поиск инструментов: сначала MOEX, затем иностранные акции/ETF (NASDAQ, NYSE) через Yahoo Finance. */
 export async function search(req: Request, res: Response): Promise<void> {
   const q = (req.query.q as string | undefined)?.trim()
   if (!q || q.length < 2) {
@@ -106,54 +172,13 @@ export async function search(req: Request, res: Response): Promise<void> {
     return
   }
 
-  try {
-    const url = `https://iss.moex.com/iss/securities.json?q=${encodeURIComponent(q)}&limit=20&iss.meta=off&is_trading=1`
-    const upstream = await fetch(url, {
-      headers: { 'User-Agent': 'InvestAnalitic/1.0' },
-      signal: AbortSignal.timeout(5000),
-    })
+  const [moexResults, foreignResults] = await Promise.all([
+    searchMoex(q).catch((err: unknown) => {
+      console.error('moex search error:', err)
+      return [] as SecurityResult[]
+    }),
+    searchForeignSecurities(q),
+  ])
 
-    if (!upstream.ok) {
-      res.status(502).json({ error: 'Ошибка загрузки данных MOEX' })
-      return
-    }
-
-    const body = (await upstream.json()) as MoexResponse
-    const cols = body.securities?.columns ?? []
-    const data = body.securities?.data ?? []
-
-    const idx = (name: string) => cols.indexOf(name)
-    const iTicker = idx('secid')
-    const iShort  = idx('shortname')
-    const iName   = idx('name')
-    const iIsin   = idx('isin')
-    const iTraded = idx('is_traded')
-    const iGroup  = idx('group')
-    const iBoard  = idx('primary_boardid')
-
-    const results: SecurityResult[] = data
-      .filter((row) => (row[iTraded] as number) === 1)
-      .map((row): SecurityResult => {
-        const ticker = String(row[iTicker] ?? '')
-        const group  = String(row[iGroup]  ?? '')
-        const board  = String(row[iBoard]  ?? '')
-        return {
-          ticker,
-          shortName: String(row[iShort] ?? ticker),
-          fullName:  String(row[iName]  ?? ticker),
-          isin:      row[iIsin] ? String(row[iIsin]) : null,
-          assetType: detectAssetType(group),
-          currency:  detectCurrency(board),
-          exchange:  detectExchange(board),
-          isTraded:  true,
-        }
-      })
-      .filter((r) => r.ticker && r.assetType !== null)
-      .slice(0, 12)
-
-    res.json(results)
-  } catch (err) {
-    console.error('securities search error:', err)
-    res.status(502).json({ error: 'Ошибка поиска инструментов' })
-  }
+  res.json([...moexResults, ...foreignResults].slice(0, 15))
 }

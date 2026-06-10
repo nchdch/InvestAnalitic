@@ -175,6 +175,7 @@ export function getPriceHistory(ticker: string, assetType: 'equity' | 'bond' = '
 export interface SecurityPriceResult {
   ticker: string
   price: number
+  currency?: 'RUB' | 'USD' | 'EUR'
 }
 export function getSecurityPrice(ticker: string, assetType: 'equity' | 'bond' = 'equity'): Promise<SecurityPriceResult> {
   return request<SecurityPriceResult>(`/securities/price?ticker=${encodeURIComponent(ticker)}&assetType=${assetType}`)

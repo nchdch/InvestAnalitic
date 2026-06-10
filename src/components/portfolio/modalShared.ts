@@ -53,6 +53,14 @@ export const MODAL_CSS = `
 .ia-rate-refresh:disabled { cursor: default; }
 .ia-rate-refresh.is-spinning svg { animation: ia-spin 0.7s linear infinite; }
 @keyframes ia-spin { to { transform: rotate(360deg); } }
+.ia-trade-total {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 12px 14px; border-radius: var(--radius-md);
+  background: var(--surface-sunken); border: 1px solid var(--border-1);
+}
+.ia-trade-total__label { font-size: var(--text-sm); color: var(--text-3); }
+.ia-trade-total__value { font-family: var(--font-mono); font-weight: var(--fw-bold); font-size: var(--text-base); color: var(--accent-hover); }
+.ia-trade-total__value.is-sell { color: var(--gain-600); }
 
 /* ---- Импорт сделок ---- */
 .ia-import-drop {

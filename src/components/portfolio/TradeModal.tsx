@@ -6,6 +6,7 @@ import { getAccounts, createAccount, createTrade, getExchangeRate, getSecurityPr
 import { usePortfolioStore } from '../../store/portfolioStore'
 import { SecuritySearchInput } from './SecuritySearchInput'
 import { MODAL_CSS } from './modalShared'
+import { formatPrice } from '../../utils/format'
 import type { SecuritySearchResult } from '../../api/client'
 import type { Account } from '@/types'
 
@@ -113,7 +114,7 @@ export function TradeModal({ open, onClose }: Props) {
     getSecurityPrice(ticker.trim().toUpperCase(), assetType)
       .then((r) => {
         if (priceRequestRef.current !== reqId) return
-        setForm((f) => ({ ...f, price: String(r.price) }))
+        setForm((f) => ({ ...f, price: String(r.price), ...(r.currency ? { currency: r.currency } : {}) }))
         setPriceLoaded(true)
       })
       .catch(() => {
@@ -179,6 +180,12 @@ export function TradeModal({ open, onClose }: Props) {
       setSubmitting(false)
     }
   }
+
+  const qty = Number(form.quantity) || 0
+  const priceNum = Number(form.price) || 0
+  const feeNum = Number(form.fee) || 0
+  const total = form.side === 'buy' ? qty * priceNum + feeNum : qty * priceNum - feeNum
+  const showTotal = qty > 0 && priceNum > 0
 
   if (!open) return null
 
@@ -378,6 +385,18 @@ export function TradeModal({ open, onClose }: Props) {
               value={form.executedAt}
               onChange={(e) => set('executedAt', e.target.value)}
             />
+
+            {/* Сумма сделки */}
+            {showTotal && (
+              <div className="ia-trade-total">
+                <span className="ia-trade-total__label">
+                  Сумма сделки {form.side === 'buy' ? '(с учётом комиссии)' : '(за вычетом комиссии)'}
+                </span>
+                <span className={`ia-trade-total__value${form.side === 'sell' ? ' is-sell' : ''}`}>
+                  {formatPrice(total, form.currency)}
+                </span>
+              </div>
+            )}
           </div>
 
           <div className="ia-modal__foot">
