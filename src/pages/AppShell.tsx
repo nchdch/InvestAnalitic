@@ -61,13 +61,14 @@ export function AppShell({ page, onNav, onAddTrade, onAddPortfolio, onAddDeposit
   const [actionOpen, setActionOpen] = useState(false)
   const actionRef = useRef<HTMLDivElement>(null)
 
-  // Подтягиваем актуальные котировки при каждом обновлении страницы
+  // Подтягиваем актуальные котировки при загрузке и при смене активного портфеля
   useEffect(() => {
+    if (!activeOrg) return
     refreshPrices().then(bump).catch(() => {
       // молча игнорируем — котировки обновятся при следующей попытке
     })
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [activeOrg?.id])
 
   const activeOrgs = orgs.filter((o) => o.status === 'active')
   const canSwitch = activeOrgs.length > 1
