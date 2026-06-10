@@ -1,6 +1,7 @@
 import type { Request, Response } from 'express'
 import { fetchRubRate } from '../services/fxService.js'
 import { fetchPriceHistory } from '../services/marketHistoryService.js'
+import { fetchMoexPrice } from '../services/moexService.js'
 
 interface MoexResponse {
   securities: {
@@ -53,6 +54,28 @@ export async function rate(req: Request, res: Response): Promise<void> {
   } catch (err) {
     console.error('exchange rate error:', err)
     res.status(502).json({ error: 'Ошибка получения курса валют' })
+  }
+}
+
+export async function price(req: Request, res: Response): Promise<void> {
+  const ticker = (req.query.ticker as string | undefined)?.trim().toUpperCase()
+  const assetType = (req.query.assetType as string | undefined) === 'bond' ? 'bond' : 'equity'
+
+  if (!ticker) {
+    res.status(400).json({ error: 'ticker is required' })
+    return
+  }
+
+  try {
+    const value = await fetchMoexPrice(ticker, assetType)
+    if (value == null) {
+      res.status(404).json({ error: `Цена ${ticker} не найдена` })
+      return
+    }
+    res.json({ ticker, price: value })
+  } catch (err) {
+    console.error('security price error:', err)
+    res.status(502).json({ error: 'Ошибка получения цены инструмента' })
   }
 }
 

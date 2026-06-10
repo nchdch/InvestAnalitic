@@ -170,6 +170,14 @@ export function getPriceHistory(ticker: string, assetType: 'equity' | 'bond' = '
   return request<PriceHistoryResult>(`/securities/history?ticker=${encodeURIComponent(ticker)}&assetType=${assetType}`)
 }
 
+export interface SecurityPriceResult {
+  ticker: string
+  price: number
+}
+export function getSecurityPrice(ticker: string, assetType: 'equity' | 'bond' = 'equity'): Promise<SecurityPriceResult> {
+  return request<SecurityPriceResult>(`/securities/price?ticker=${encodeURIComponent(ticker)}&assetType=${assetType}`)
+}
+
 // Portfolio
 export function getPortfolioSummary(): Promise<PortfolioResponse> {
   const orgId = activeOrgId()

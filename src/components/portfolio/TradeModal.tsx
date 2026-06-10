@@ -2,7 +2,7 @@
 import { X, TrendingUp, Layers, RotateCw } from 'lucide-react'
 import { Button, Input, Select } from '../index'
 import { injectOnce } from '../_internal/style'
-import { getAccounts, createAccount, createTrade, getExchangeRate } from '../../api/client'
+import { getAccounts, createAccount, createTrade, getExchangeRate, getSecurityPrice } from '../../api/client'
 import { usePortfolioStore } from '../../store/portfolioStore'
 import { SecuritySearchInput } from './SecuritySearchInput'
 import { MODAL_CSS } from './modalShared'
@@ -57,6 +57,8 @@ export function TradeModal({ open, onClose }: Props) {
   const [error, setError] = useState('')
   const [rateDate, setRateDate] = useState('')
   const [fetchingRate, setFetchingRate] = useState(false)
+  const [priceLoaded, setPriceLoaded] = useState(false)
+  const [fetchingPrice, setFetchingPrice] = useState(false)
 
   const needNewAccount = accounts.length === 0
 
@@ -65,6 +67,7 @@ export function TradeModal({ open, onClose }: Props) {
     setForm({ ...EMPTY, executedAt: today() })
     setError('')
     setRateDate('')
+    setPriceLoaded(false)
     setNewAccName('')
     setNewAccBroker('')
     getAccounts()
@@ -96,6 +99,30 @@ export function TradeModal({ open, onClose }: Props) {
     loadRate(form.currency)
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [form.currency, open])
+
+  // Подтягиваем актуальную цену с MOEX при выборе бумаги
+  const priceRequestRef = useRef(0)
+  const loadPrice = useCallback((ticker: string, assetType: 'equity' | 'bond') => {
+    if (!ticker.trim()) return
+    const reqId = ++priceRequestRef.current
+    setFetchingPrice(true)
+    setPriceLoaded(false)
+    getSecurityPrice(ticker.trim().toUpperCase(), assetType)
+      .then((r) => {
+        if (priceRequestRef.current !== reqId) return
+        setForm((f) => ({ ...f, price: String(r.price) }))
+        setPriceLoaded(true)
+      })
+      .catch(() => {})
+      .finally(() => { if (priceRequestRef.current === reqId) setFetchingPrice(false) })
+  }, [])
+
+  useEffect(() => {
+    if (!open) return
+    if (!form.ticker.trim()) return
+    loadPrice(form.ticker, form.assetType)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [form.ticker, form.assetType, open])
 
   const set = useCallback(<K extends keyof FormState>(k: K, v: FormState[K]) => {
     setForm((f) => ({ ...f, [k]: v }))
@@ -266,8 +293,21 @@ export function TradeModal({ open, onClose }: Props) {
                 step="any"
                 placeholder="286.50"
                 value={form.price}
-                onChange={(e) => set('price', e.target.value)}
+                onChange={(e) => { set('price', e.target.value); setPriceLoaded(false) }}
                 required
+                hint={priceLoaded ? 'Текущая цена с MOEX, можно изменить' : undefined}
+                suffix={
+                  <button
+                    type="button"
+                    className={`ia-rate-refresh${fetchingPrice ? ' is-spinning' : ''}`}
+                    onClick={() => loadPrice(form.ticker, form.assetType)}
+                    disabled={fetchingPrice || !form.ticker.trim()}
+                    aria-label="Обновить цену"
+                    title="Обновить цену"
+                  >
+                    <RotateCw size={14} />
+                  </button>
+                }
               />
             </div>
 
