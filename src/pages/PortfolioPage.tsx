@@ -360,16 +360,24 @@ export function PortfolioPage() {
     new Set(accounts.flatMap((a) => a.equityRows.map((r) => r.position.ticker)))
   ).sort().join(',')
 
+  const bondTickersKey = Array.from(
+    new Set(accounts.flatMap((a) => a.bondRows.map((r) => r.position.ticker)))
+  ).sort().join(',')
+
   useEffect(() => {
-    const tickers = equityTickersKey ? equityTickersKey.split(',') : []
-    const toFetch = tickers.filter((t) => !fetchedTickersRef.current.has(t))
+    const equityTickers = equityTickersKey ? equityTickersKey.split(',') : []
+    const bondTickers = bondTickersKey ? bondTickersKey.split(',') : []
+    const toFetch = [
+      ...equityTickers.filter((t) => !fetchedTickersRef.current.has(t)).map((ticker) => ({ ticker, assetType: 'equity' as const })),
+      ...bondTickers.filter((t) => !fetchedTickersRef.current.has(t)).map((ticker) => ({ ticker, assetType: 'bond' as const })),
+    ]
     if (toFetch.length === 0) return
-    toFetch.forEach((t) => fetchedTickersRef.current.add(t))
+    toFetch.forEach(({ ticker }) => fetchedTickersRef.current.add(ticker))
     Promise.all(
-      toFetch.map((t) =>
-        getPriceHistory(t, 'equity')
-          .then((r): readonly [string, number[]] => [t, r.prices])
-          .catch((): readonly [string, number[]] => [t, []])
+      toFetch.map(({ ticker, assetType }) =>
+        getPriceHistory(ticker, assetType)
+          .then((r): readonly [string, number[]] => [ticker, r.prices])
+          .catch((): readonly [string, number[]] => [ticker, []])
       )
     ).then((entries) => {
       setPriceHistory((prev) => {
@@ -378,7 +386,7 @@ export function PortfolioPage() {
         return next
       })
     })
-  }, [equityTickersKey])
+  }, [equityTickersKey, bondTickersKey])
 
   if (isLoading) return <div className="ia-screen"><Spinner /></div>
 
@@ -583,13 +591,16 @@ export function PortfolioPage() {
                   <tr>
                     <th>Выпуск</th>
                     <th className="r">Кол-во</th>
-                    <th className="r">Стоимость</th>
-                    <th className="r">Инвестировано</th>
+                    <th className="r">Тек. стоимость</th>
                     <th className="r">Прибыль</th>
-                    <th className="r">Изм. за день</th>
                     <th className="r">Купон %</th>
+                    <th className="r">Куп. доходность</th>
+                    <th className="r">Прибыль от купонов</th>
+                    <th className="r">Сум. прибыль</th>
                     <th className="r">YTM</th>
                     <th>Погашение</th>
+                    <th className="r">Доля</th>
+                    <th>Динамика</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -606,18 +617,23 @@ export function PortfolioPage() {
                       </td>
                       <td className="r ia-num">{NUM0.format(row.position.quantity)}</td>
                       <td className="r ia-num" style={{ color: 'var(--text-1)', fontWeight: 600 }}>{money(row.currentValue)}</td>
-                      <td className="r ia-num">{money(row.investedValue)}</td>
                       <td className="r">
                         {row.unrealizedPnl !== 0
                           ? <PnLValue value={row.unrealizedPnl} percent={row.unrealizedPnlPercent} display="both" size="sm" />
                           : <span style={{ color: 'var(--text-4)', fontSize: 'var(--text-xs)' }}>нет цены</span>}
                       </td>
-                      <td className="r">
-                        {row.dayChange != null
-                          ? <PnLValue value={row.dayChange} percent={row.dayChangePercent ?? undefined} display="both" size="sm" />
-                          : <span style={{ color: 'var(--text-4)', fontSize: 'var(--text-xs)' }}>—</span>}
-                      </td>
                       <td className="r ia-num">{row.position.couponRate != null ? row.position.couponRate.toFixed(2) + '%' : '—'}</td>
+                      <td className="r ia-num">{row.currentYield != null ? row.currentYield.toFixed(2) + '%' : '—'}</td>
+                      <td className="r">
+                        {row.couponIncome > 0
+                          ? <span className="ia-num" style={{ color: 'var(--gain-600)' }}>{money(row.couponIncome)}</span>
+                          : <span style={{ color: 'var(--text-4)' }}>—</span>}
+                      </td>
+                      <td className="r">
+                        {row.totalPnl !== 0
+                          ? <PnLValue value={row.totalPnl} percent={row.totalPnlPercent} display="both" size="sm" />
+                          : <span style={{ color: 'var(--text-4)', fontSize: 'var(--text-xs)' }}>нет цены</span>}
+                      </td>
                       <td className="r">
                         {row.ytm != null
                           ? <Badge tone="positive" size="sm">{row.ytm.toFixed(1)}%</Badge>
@@ -628,6 +644,8 @@ export function PortfolioPage() {
                           ? new Date(row.position.maturityDate).toLocaleDateString('ru-RU')
                           : '—'}
                       </td>
+                      <td className="r ia-num" style={{ color: 'var(--text-3)' }}>{row.portfolioWeight.toFixed(1)}%</td>
+                      <td><Sparkline data={priceHistory[row.position.ticker] ?? []} /></td>
                     </tr>
                   ))}
                 </tbody>

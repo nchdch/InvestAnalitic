@@ -108,6 +108,19 @@ export async function getPortfolioSummary(orgId?: string) {
     cashByAccount.set(c.accountId, list)
   }
 
+  // Сумма полученных купонов по облигационным позициям (account_id + ticker)
+  const { rows: couponPayments } = await pool.query<{ account_id: string; ticker: string; total: string }>(
+    `SELECT account_id, ticker, COALESCE(SUM(net_amount), 0) AS total
+     FROM payments
+     WHERE type = 'coupon' AND account_id = ANY($1)
+     GROUP BY account_id, ticker`,
+    [accounts.map((a) => a.id)]
+  )
+  const couponIncomeMap = new Map<string, number>()
+  for (const r of couponPayments) {
+    couponIncomeMap.set(`${r.account_id}|${r.ticker}`, Number(r.total))
+  }
+
   // Курсы валют для приведения остатков к рублю
   const cashCurrencies = [...new Set(cashBalances.map((c) => c.currency).filter((c) => c !== 'RUB'))]
   const rubRates = new Map<string, number>()
@@ -212,6 +225,11 @@ export async function getPortfolioSummary(orgId?: string) {
           : null
         const days = p.maturity_date ? daysTo(p.maturity_date) : null
 
+        const currentYield = lastPrice > 0 ? Math.round((couponRate / (lastPrice / 100)) * 100) / 100 : null
+        const couponIncome = couponIncomeMap.get(`${p.account_id}|${p.ticker}`) ?? 0
+        const totalPnl = pnl + couponIncome
+        const totalPnlPercent = cost > 0 ? Math.round((totalPnl / cost) * 10000) / 100 : 0
+
         bondRows.push({
           position: {
             id: p.id,
@@ -239,6 +257,10 @@ export async function getPortfolioSummary(orgId?: string) {
           unrealizedPnlPercent: Math.round(pnlPct * 100) / 100,
           dayChange,
           dayChangePercent: dayChangePct,
+          currentYield,
+          couponIncome: Math.round(couponIncome * 100) / 100,
+          totalPnl: Math.round(totalPnl * 100) / 100,
+          totalPnlPercent,
           portfolioWeight: 0,
         })
       }

@@ -27,6 +27,14 @@ export interface BondRow {
   unrealizedPnlPercent: number
   dayChange: number | null
   dayChangePercent: number | null
+  /** Текущая доходность купона к текущей цене, % годовых. */
+  currentYield: number | null
+  /** Сумма полученных купонов по позиции (после налога), ₽. */
+  couponIncome: number
+  /** Суммарная прибыль: переоценка + купоны, ₽. */
+  totalPnl: number
+  /** Суммарная доходность к вложенным средствам, %. */
+  totalPnlPercent: number
   portfolioWeight: number
 }
 
