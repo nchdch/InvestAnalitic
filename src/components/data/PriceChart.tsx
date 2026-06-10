@@ -41,6 +41,13 @@ export interface PriceChartProps {
 
 const MONTHS_SHORT = ['янв', 'фев', 'мар', 'апр', 'май', 'июн', 'июл', 'авг', 'сен', 'окт', 'ноя', 'дек']
 
+const axisPriceFormatter = new Intl.NumberFormat('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+
+/** Компактная подпись цены для боковой шкалы — без значка валюты, чтобы не выходить за рамки бейджа. */
+function fmtAxisPrice(v: number): string {
+  return axisPriceFormatter.format(v)
+}
+
 function fmtAxisDate(iso: string): string {
   const [, m, d] = iso.split('-')
   return `${d}.${m}`
@@ -77,7 +84,7 @@ export function PriceChart({ dates, prices, height = 220, currency = 'RUB' }: Pr
   const visibleDates = dates.slice(zStart, zEnd + 1)
 
   const width = 600
-  const AXIS_W = 64
+  const AXIS_W = 72
   const plotW = width - AXIS_W
   const padTop = 16
   const padBottom = 8
@@ -229,15 +236,15 @@ export function PriceChart({ dates, prices, height = 220, currency = 'RUB' }: Pr
           {/* текущая цена — линия-ориентир и подпись сбоку */}
           <line x1="0" y1={lastY} x2={plotW} y2={lastY} stroke={color} strokeWidth="1" strokeDasharray="2 3" opacity="0.5" />
           <rect x={plotW + 2} y={lastY - 8} width={AXIS_W - 4} height="16" rx="3" fill="var(--surface-raised)" stroke={color} strokeOpacity="0.5" />
-          <text x={width - 4} y={lastY + 3.5} fontSize="10" fontFamily="var(--font-mono)" fill={color} textAnchor="end">
-            {formatPrice(lastPrice, currency)}
+          <text x={width - 6} y={lastY + 3.5} fontSize="10" fontFamily="var(--font-mono)" fill={color} textAnchor="end">
+            {fmtAxisPrice(lastPrice)}
           </text>
 
           {gridValues
             .filter((v) => Math.abs(y(v) - lastY) > 10)
             .map((v, i) => (
-              <text key={`axis-${i}`} x={width - 4} y={y(v) + 3} fontSize="9" fill="var(--text-4)" textAnchor="end">
-                {formatPrice(v, currency)}
+              <text key={`axis-${i}`} x={width - 6} y={y(v) + 3} fontSize="9" fill="var(--text-4)" textAnchor="end">
+                {fmtAxisPrice(v)}
               </text>
             ))}
 
