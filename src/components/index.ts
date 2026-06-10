@@ -31,6 +31,9 @@ export type { AllocationBarProps, AllocationSegment } from './data/AllocationBar
 export { Avatar } from './data/Avatar'
 export type { AvatarProps } from './data/Avatar'
 
+export { Sparkline } from './data/Sparkline'
+export type { SparklineProps } from './data/Sparkline'
+
 export { Tabs } from './navigation/Tabs'
 export type { TabsProps, TabItem } from './navigation/Tabs'
 

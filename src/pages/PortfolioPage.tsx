@@ -1,8 +1,9 @@
-import React, { useEffect, useState } from 'react'
-import { Card, StatCard, PnLValue, Badge, AllocationBar, Avatar, Tabs, Button, IconButton } from '../components'
+import React, { useEffect, useRef, useState } from 'react'
+import { Card, StatCard, PnLValue, Badge, AllocationBar, Avatar, Sparkline, Tabs, Button, IconButton } from '../components'
 import { Sparkles, Download, PackageOpen, ChevronDown, ChevronRight } from 'lucide-react'
 import { usePortfolio } from '../hooks/usePortfolio'
 import { usePortfolioStore } from '../store/portfolioStore'
+import { getPriceHistory } from '../api/client'
 import type { AccountSummary } from '@/types'
 
 const RUB = new Intl.NumberFormat('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
@@ -338,12 +339,38 @@ export function PortfolioPage() {
   const { summary, accounts, isLoading } = usePortfolio()
   const selectedAccountId = usePortfolioStore((s) => s.selectedAccountId)
   const setSelectedAccountId = usePortfolioStore((s) => s.setSelectedAccountId)
+  const [priceHistory, setPriceHistory] = useState<Record<string, number[]>>({})
+  const fetchedTickersRef = useRef<Set<string>>(new Set())
 
   useEffect(() => {
     if (selectedAccountId && !accounts.some((a) => a.id === selectedAccountId)) {
       setSelectedAccountId(null)
     }
   }, [accounts, selectedAccountId, setSelectedAccountId])
+
+  const equityTickersKey = Array.from(
+    new Set(accounts.flatMap((a) => a.equityRows.map((r) => r.position.ticker)))
+  ).sort().join(',')
+
+  useEffect(() => {
+    const tickers = equityTickersKey ? equityTickersKey.split(',') : []
+    const toFetch = tickers.filter((t) => !fetchedTickersRef.current.has(t))
+    if (toFetch.length === 0) return
+    toFetch.forEach((t) => fetchedTickersRef.current.add(t))
+    Promise.all(
+      toFetch.map((t) =>
+        getPriceHistory(t, 'equity')
+          .then((r) => [t, r.prices] as const)
+          .catch(() => [t, []] as const)
+      )
+    ).then((entries) => {
+      setPriceHistory((prev) => {
+        const next = { ...prev }
+        for (const [t, prices] of entries) next[t] = prices
+        return next
+      })
+    })
+  }, [equityTickersKey])
 
   if (isLoading) return <div className="ia-screen"><Spinner /></div>
 
@@ -484,15 +511,16 @@ export function PortfolioPage() {
             : <table className="ia-table">
                 <thead>
                   <tr>
-                    <th>Тикер</th>
+                    <th>Акция</th>
+                    <th className="r">Изм. за день, %</th>
                     <th className="r">Кол-во</th>
-                    <th className="r">Средняя</th>
-                    <th className="r">Цена</th>
-                    <th className="r">Стоимость</th>
-                    <th className="r">Инвестировано</th>
-                    <th className="r">P&L</th>
-                    <th className="r">Изм. за день</th>
-                    <th className="r">Вес</th>
+                    <th className="r">Ср. цена, ₽</th>
+                    <th className="r">Тек. цена, ₽</th>
+                    <th className="r">Тек. стоимость, ₽</th>
+                    <th className="r">Прибыль, ₽</th>
+                    <th className="r">Прибыль, %</th>
+                    <th className="r">Доля</th>
+                    <th>Динамика</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -507,22 +535,27 @@ export function PortfolioPage() {
                           </div>
                         </div>
                       </td>
+                      <td className="r">
+                        {row.dayChangePercent != null
+                          ? <PnLValue percent={row.dayChangePercent} display="percent" size="sm" />
+                          : <span style={{ color: 'var(--text-4)', fontSize: 'var(--text-xs)' }}>—</span>}
+                      </td>
                       <td className="r ia-num">{NUM0.format(row.position.quantity)}</td>
                       <td className="r ia-num">{RUB.format(row.position.averagePrice)}</td>
                       <td className="r ia-num">{RUB.format(row.currentPrice)}</td>
                       <td className="r ia-num" style={{ color: 'var(--text-1)', fontWeight: 600 }}>{money(row.currentValue)}</td>
-                      <td className="r ia-num">{money(row.investedValue)}</td>
                       <td className="r">
                         {row.unrealizedPnl !== 0
-                          ? <PnLValue value={row.unrealizedPnl} percent={row.unrealizedPnlPercent} display="both" size="sm" />
+                          ? <PnLValue value={row.unrealizedPnl} display="money" size="sm" />
                           : <span style={{ color: 'var(--text-4)', fontSize: 'var(--text-xs)' }}>нет цены</span>}
                       </td>
                       <td className="r">
-                        {row.dayChange != null
-                          ? <PnLValue value={row.dayChange} percent={row.dayChangePercent ?? undefined} display="both" size="sm" />
-                          : <span style={{ color: 'var(--text-4)', fontSize: 'var(--text-xs)' }}>—</span>}
+                        {row.unrealizedPnl !== 0
+                          ? <PnLValue percent={row.unrealizedPnlPercent} display="percent" size="sm" />
+                          : <span style={{ color: 'var(--text-4)' }}>—</span>}
                       </td>
                       <td className="r ia-num" style={{ color: 'var(--text-3)' }}>{row.portfolioWeight.toFixed(1)}%</td>
+                      <td><Sparkline data={priceHistory[row.position.ticker] ?? []} /></td>
                     </tr>
                   ))}
                 </tbody>

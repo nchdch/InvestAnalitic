@@ -162,6 +162,14 @@ export function getExchangeRate(currency: string): Promise<ExchangeRateResult> {
   return request<ExchangeRateResult>(`/securities/rate?currency=${encodeURIComponent(currency)}`)
 }
 
+export interface PriceHistoryResult {
+  ticker: string
+  prices: number[]
+}
+export function getPriceHistory(ticker: string, assetType: 'equity' | 'bond' = 'equity'): Promise<PriceHistoryResult> {
+  return request<PriceHistoryResult>(`/securities/history?ticker=${encodeURIComponent(ticker)}&assetType=${assetType}`)
+}
+
 // Portfolio
 export function getPortfolioSummary(): Promise<PortfolioResponse> {
   const orgId = activeOrgId()
