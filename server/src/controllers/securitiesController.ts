@@ -164,7 +164,7 @@ async function searchMoex(q: string): Promise<SecurityResult[]> {
     .slice(0, 12)
 }
 
-/** Поиск инструментов: сначала MOEX, затем иностранные акции/ETF (NASDAQ, NYSE) через Yahoo Finance. */
+/** Поиск инструментов: сначала MOEX, затем иностранные акции/ETF (NASDAQ, NYSE) через Finnhub. */
 export async function search(req: Request, res: Response): Promise<void> {
   const q = (req.query.q as string | undefined)?.trim()
   if (!q || q.length < 2) {
@@ -180,5 +180,16 @@ export async function search(req: Request, res: Response): Promise<void> {
     searchForeignSecurities(q),
   ])
 
-  res.json([...moexResults, ...foreignResults].slice(0, 15))
+  // MOEX-результаты в приоритете; иностранные добавляем только если такого тикера ещё нет
+  const seen = new Set<string>()
+  const merged: SecurityResult[] = []
+  for (const r of [...moexResults, ...foreignResults]) {
+    const key = r.ticker.toUpperCase()
+    if (seen.has(key)) continue
+    seen.add(key)
+    merged.push(r)
+    if (merged.length >= 15) break
+  }
+
+  res.json(merged)
 }

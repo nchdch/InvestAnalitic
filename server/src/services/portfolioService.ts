@@ -316,7 +316,7 @@ export async function getPortfolioSummary(orgId?: string) {
   }
 }
 
-/** Подтягивает текущие котировки с MOEX (для российских бумаг) и Yahoo Finance (для иностранных акций) и обновляет last_price у позиций портфеля. */
+/** Подтягивает текущие котировки с MOEX (для российских бумаг) и Finnhub (для иностранных акций) и обновляет last_price у позиций портфеля. */
 export async function refreshPrices(orgId?: string) {
   const { rows: accounts } = orgId
     ? await pool.query<{ id: string }>('SELECT id FROM accounts WHERE org_id = $1', [orgId])

@@ -13,16 +13,18 @@ export const MODAL_CSS = `
   width: 100%; max-width: 480px;
   animation: ia-slide-up var(--dur-normal) var(--ease-out);
   max-height: 90vh; display: flex; flex-direction: column;
+  overflow: hidden;
 }
 .ia-modal--wide { max-width: 800px; }
 @keyframes ia-slide-up { from { transform: translateY(16px); opacity:0 } to { transform: translateY(0); opacity:1 } }
+.ia-modal > form { display: flex; flex-direction: column; min-height: 0; flex: 1 1 auto; }
 .ia-modal__head {
   display: flex; align-items: center; justify-content: space-between;
   padding: 18px 20px 14px; border-bottom: 1px solid var(--border-1);
   flex-shrink: 0;
 }
 .ia-modal__title { font-size: var(--text-h4); font-weight: var(--fw-bold); color: var(--text-1); }
-.ia-modal__body { padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 14px; }
+.ia-modal__body { padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 14px; flex: 1 1 auto; min-height: 0; }
 .ia-modal__foot { padding: 14px 20px; border-top: 1px solid var(--border-1); display: flex; gap: 10px; justify-content: flex-end; flex-shrink: 0; }
 .ia-modal-close { background: transparent; border: 0; cursor: pointer; color: var(--text-3); display: flex; padding: 4px; border-radius: var(--radius-sm); }
 .ia-modal-close:hover { color: var(--text-1); background: var(--surface-sunken); }

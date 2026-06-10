@@ -80,8 +80,10 @@ export interface ForeignSecurityResult {
 }
 
 const FOREIGN_TYPES = new Set(['Common Stock', 'ETP', 'ETF', 'REIT'])
+// Только обычные биржевые тикеры (1-5 латинских букв) — отсекает BDR/ADR-дубли вида AAPL34, неактивные/служебные коды с точками и т.п.
+const TICKER_RE = /^[A-Z]{1,5}$/
 
-/** Поиск иностранных акций и ETF (NASDAQ/NYSE) через Finnhub. */
+/** Поиск иностранных акций и ETF (NASDAQ/NYSE) через Finnhub. Без дублей по тикеру. */
 export async function searchForeignSecurities(q: string): Promise<ForeignSecurityResult[]> {
   const key = apiKey()
   if (!key) return []
@@ -93,19 +95,26 @@ export async function searchForeignSecurities(q: string): Promise<ForeignSecurit
     const body = (await res.json()) as FinnhubSearchResponse
     const results = body.result ?? []
 
-    return results
-      .filter((item) => item.symbol && !item.symbol.includes('.') && FOREIGN_TYPES.has(item.type ?? ''))
-      .map((item): ForeignSecurityResult => ({
-        ticker: item.symbol as string,
-        shortName: item.description ?? (item.symbol as string),
-        fullName: item.description ?? (item.symbol as string),
+    const seen = new Set<string>()
+    const unique: ForeignSecurityResult[] = []
+    for (const item of results) {
+      const symbol = item.symbol
+      if (!symbol || !TICKER_RE.test(symbol) || !FOREIGN_TYPES.has(item.type ?? '')) continue
+      if (seen.has(symbol)) continue
+      seen.add(symbol)
+      unique.push({
+        ticker: symbol,
+        shortName: item.description ?? symbol,
+        fullName: item.description ?? symbol,
         isin: null,
         assetType: 'equity',
         currency: 'USD',
         exchange: 'NASDAQ',
         isTraded: true,
-      }))
-      .slice(0, 8)
+      })
+      if (unique.length >= 8) break
+    }
+    return unique
   } catch {
     return []
   }
