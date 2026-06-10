@@ -2,12 +2,13 @@
 import { useNavigate } from 'react-router-dom'
 import logoMark from '../assets/logo-mark.svg'
 import { Button, IconButton, Avatar } from '../components'
-import { LayoutDashboard, Sparkles, Scale, Calendar, Plus, Bell, Search, Settings, LogOut, Building2, ChevronDown, ChevronUp, ArrowUpRight, ArrowDownRight, Layers, TrendingUp, Wallet, Upload } from 'lucide-react'
+import { LayoutDashboard, Sparkles, Scale, Calendar, Plus, Bell, Search, Settings, LogOut, Building2, ChevronDown, ChevronUp, ArrowUpRight, ArrowDownRight, Layers, TrendingUp, Wallet, Upload, Sun, Moon } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { usePortfolio } from '../hooks/usePortfolio'
 import { useAuthStore } from '../store/authStore'
 import { useOrgStore } from '../store/orgStore'
 import { usePortfolioStore } from '../store/portfolioStore'
+import { useThemeStore } from '../store/themeStore'
 import { logoutUser } from '../api/auth'
 import { refreshPrices } from '../api/client'
 
@@ -55,6 +56,8 @@ export function AppShell({ page, onNav, onAddTrade, onAddPortfolio, onAddDeposit
   const bump = usePortfolioStore((s) => s.bump)
   const selectedAccountId = usePortfolioStore((s) => s.selectedAccountId)
   const setSelectedAccountId = usePortfolioStore((s) => s.setSelectedAccountId)
+  const theme = useThemeStore((s) => s.theme)
+  const toggleTheme = useThemeStore((s) => s.toggleTheme)
 
   const [orgOpen, setOrgOpen] = useState(false)
   const dropdownRef = useRef<HTMLDivElement>(null)
@@ -192,6 +195,13 @@ export function AppShell({ page, onNav, onAddTrade, onAddPortfolio, onAddDeposit
         <div className="ia-sidebar__user">
           <Avatar name={displayName} shape="circle" size="sm" color="var(--ink-600)" />
           <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{displayName}</span>
+          <IconButton
+            label={theme === 'dark' ? 'Светлая тема' : 'Тёмная тема'}
+            size="sm"
+            onClick={toggleTheme}
+          >
+            {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
+          </IconButton>
           <IconButton label="Управление организациями" size="sm" onClick={() => navigate('/org-setup')}><Settings size={16} /></IconButton>
           <IconButton label="Выйти" size="sm" onClick={handleLogout}><LogOut size={16} /></IconButton>
         </div>

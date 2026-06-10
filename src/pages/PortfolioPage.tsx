@@ -4,6 +4,7 @@ import { Sparkles, Download, PackageOpen, ChevronDown, ChevronRight } from 'luci
 import { usePortfolio } from '../hooks/usePortfolio'
 import { usePortfolioStore } from '../store/portfolioStore'
 import { getPriceHistory } from '../api/client'
+import { getTickerLogoUrl } from '../utils/logos'
 import type { AccountSummary } from '@/types'
 
 const RUB = new Intl.NumberFormat('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
@@ -154,7 +155,7 @@ function SummaryReportTable({ accounts, totalValue }: { accounts: AccountSummary
                   <tr key={row.position.id} style={{ opacity: 0.95 }}>
                     <td style={{ paddingLeft: 56 }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <Avatar name={row.position.ticker} size="sm" />
+                        <Avatar name={row.position.ticker} src={getTickerLogoUrl(row.position.ticker, 'equity')} size="sm" />
                         <div>
                           <div style={{ fontWeight: 600, fontSize: 'var(--text-sm)', color: 'var(--text-1)', fontFamily: 'var(--font-mono)' }}>{row.position.ticker}</div>
                           <div style={{ fontSize: 'var(--text-xs)', color: 'var(--text-3)' }}>{row.position.name ?? row.position.ticker}</div>
@@ -297,7 +298,7 @@ function AllAssetsTable({ accounts }: { accounts: AccountSummary[] }) {
             <tr key={row.position.id}>
               <td>
                 <div className="ia-cell-tk">
-                  <Avatar name={row.position.ticker} size="sm" color={row.type === 'bond' ? 'var(--ink-600)' : undefined} />
+                  <Avatar name={row.position.ticker} src={getTickerLogoUrl(row.position.ticker, row.type)} size="sm" color={row.type === 'bond' ? 'var(--ink-600)' : undefined} />
                   <div>
                     <div className="ia-cell-tk__t ia-mono">{row.position.ticker}</div>
                     <div className="ia-cell-tk__n">{row.position.name ?? row.position.ticker}</div>
@@ -529,7 +530,7 @@ export function PortfolioPage() {
                     <tr key={row.position.id}>
                       <td>
                         <div className="ia-cell-tk">
-                          <Avatar name={row.position.ticker} size="sm" />
+                          <Avatar name={row.position.ticker} src={getTickerLogoUrl(row.position.ticker, 'equity')} size="sm" />
                           <div>
                             <div className="ia-cell-tk__t ia-mono">{row.position.ticker}</div>
                             <div className="ia-cell-tk__n">{row.position.name ?? row.position.ticker}</div>

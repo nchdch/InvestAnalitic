@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useState } from 'react'
 import { injectOnce } from '../_internal/style'
 
 const CSS = `
@@ -11,7 +11,7 @@ const CSS = `
 .ia-avatar--sm{ width:28px; height:28px; font-size:11px; }
 .ia-avatar--md{ width:38px; height:38px; font-size:14px; }
 .ia-avatar--lg{ width:48px; height:48px; font-size:18px; }
-.ia-avatar img{ width:100%; height:100%; object-fit:cover; }
+.ia-avatar img{ width:100%; height:100%; object-fit:contain; background:#fff; }
 `
 
 const TILE = [
@@ -48,6 +48,8 @@ export function Avatar({
   ...rest
 }: AvatarProps) {
   injectOnce('ia-avatar', CSS)
+  const [imgFailed, setImgFailed] = useState(false)
+  const showImg = !!src && !imgFailed
   const cls = [
     'ia-avatar', `ia-avatar--${size}`,
     shape === 'circle' ? 'ia-avatar--circle' : '', className,
@@ -55,11 +57,11 @@ export function Avatar({
   return (
     <span
       className={cls}
-      style={{ background: src ? 'var(--surface-sunken)' : (color || pick(name)) }}
+      style={{ background: showImg ? 'var(--surface-sunken)' : (color || pick(name)) }}
       title={name}
       {...rest}
     >
-      {src ? <img src={src} alt={name} /> : initials(name)}
+      {showImg ? <img src={src!} alt={name} onError={() => setImgFailed(true)} /> : initials(name)}
     </span>
   )
 }
