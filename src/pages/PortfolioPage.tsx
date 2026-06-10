@@ -343,10 +343,11 @@ export function PortfolioPage() {
   const fetchedTickersRef = useRef<Set<string>>(new Set())
 
   useEffect(() => {
+    if (isLoading) return
     if (selectedAccountId && !accounts.some((a) => a.id === selectedAccountId)) {
       setSelectedAccountId(null)
     }
-  }, [accounts, selectedAccountId, setSelectedAccountId])
+  }, [accounts, isLoading, selectedAccountId, setSelectedAccountId])
 
   const equityTickersKey = Array.from(
     new Set(accounts.flatMap((a) => a.equityRows.map((r) => r.position.ticker)))
