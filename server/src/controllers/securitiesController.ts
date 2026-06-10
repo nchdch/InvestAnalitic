@@ -2,7 +2,7 @@ import type { Request, Response } from 'express'
 import { fetchRubRate } from '../services/fxService.js'
 import { fetchPriceHistory } from '../services/marketHistoryService.js'
 import { fetchMoexPrice } from '../services/moexService.js'
-import { fetchForeignQuote, fetchForeignPriceHistory, searchForeignSecurities } from '../services/foreignMarketService.js'
+import { fetchForeignQuote, fetchForeignPriceHistory, fetchYahooPriceHistory, searchForeignSecurities } from '../services/foreignMarketService.js'
 
 interface MoexResponse {
   securities: {
@@ -135,6 +135,12 @@ export async function history(req: Request, res: Response): Promise<void> {
       const foreign = await fetchForeignPriceHistory(ticker, days)
       if (foreign.dates.length > 0) {
         res.json({ ticker, dates: foreign.dates, prices: foreign.prices })
+        return
+      }
+
+      const yahoo = await fetchYahooPriceHistory(ticker, days)
+      if (yahoo.dates.length > 0) {
+        res.json({ ticker, dates: yahoo.dates, prices: yahoo.prices })
         return
       }
     }

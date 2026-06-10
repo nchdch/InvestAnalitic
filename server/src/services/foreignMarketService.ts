@@ -68,6 +68,69 @@ export async function fetchForeignPriceHistory(ticker: string, days: number): Pr
   }
 }
 
+const YAHOO_CHART_BASE = 'https://query1.finance.yahoo.com/v8/finance/chart'
+const YAHOO_USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+
+interface YahooChartResponse {
+  chart?: {
+    result?: Array<{
+      timestamp?: number[]
+      indicators?: { quote?: Array<{ close?: Array<number | null> }> }
+    }> | null
+  }
+}
+
+const yahooHistoryCache = new Map<string, { dates: string[]; prices: number[]; fetchedAt: number }>()
+const YAHOO_CACHE_TTL_MS = 60 * 60 * 1000
+
+function yahooRange(days: number): string {
+  if (days <= 5) return '5d'
+  if (days <= 30) return '1mo'
+  if (days <= 90) return '3mo'
+  if (days <= 180) return '6mo'
+  if (days <= 365) return '1y'
+  return '2y'
+}
+
+/** Дневные цены закрытия через Yahoo Finance — резерв для иностранных бумаг, история которых недоступна через Finnhub на бесплатном тарифе. */
+export async function fetchYahooPriceHistory(ticker: string, days: number): Promise<{ dates: string[]; prices: number[] }> {
+  const range = yahooRange(days)
+  const cacheKey = `${ticker}:${range}`
+  const cached = yahooHistoryCache.get(cacheKey)
+  if (cached && Date.now() - cached.fetchedAt < YAHOO_CACHE_TTL_MS) {
+    return { dates: cached.dates, prices: cached.prices }
+  }
+
+  try {
+    const url = `${YAHOO_CHART_BASE}/${encodeURIComponent(ticker)}?range=${range}&interval=1d`
+    const res = await fetch(url, {
+      headers: { 'User-Agent': YAHOO_USER_AGENT },
+      signal: AbortSignal.timeout(5000),
+    })
+    if (!res.ok) return { dates: [], prices: [] }
+
+    const body = (await res.json()) as YahooChartResponse
+    const result = body.chart?.result?.[0]
+    const timestamps = result?.timestamp
+    const closes = result?.indicators?.quote?.[0]?.close
+    if (!timestamps || !closes) return { dates: [], prices: [] }
+
+    const dates: string[] = []
+    const prices: number[] = []
+    for (let i = 0; i < timestamps.length; i++) {
+      const close = closes[i]
+      if (typeof close !== 'number') continue
+      dates.push(new Date(timestamps[i] * 1000).toISOString().slice(0, 10))
+      prices.push(close)
+    }
+
+    if (dates.length > 0) yahooHistoryCache.set(cacheKey, { dates, prices, fetchedAt: Date.now() })
+    return { dates, prices }
+  } catch {
+    return { dates: [], prices: [] }
+  }
+}
+
 export interface ForeignSecurityResult {
   ticker: string
   shortName: string
