@@ -1,4 +1,4 @@
-﻿import type { Account, Position, Trade, Payment, AccountSummary } from '@/types'
+﻿import type { Account, Position, Trade, Payment, AccountSummary, CashBalance } from '@/types'
 import { useAuthStore } from '@/store/authStore'
 import { useOrgStore } from '@/store/orgStore'
 
@@ -128,6 +128,14 @@ export function deletePayment(id: string): Promise<void> {
 export function getPaymentStats(accountId?: string): Promise<{ totalGross: number; totalNet: number; totalTax: number; count: number }> {
   const q = accountId ? `?accountId=${accountId}` : ''
   return request(`/payments/stats${q}`)
+}
+
+// Cash balances
+export function getCashBalances(accountId: string): Promise<CashBalance[]> {
+  return request<CashBalance[]>(`/cash?accountId=${encodeURIComponent(accountId)}`)
+}
+export function createCashTransaction(data: { accountId: string; currency: string; amount: number }): Promise<CashBalance> {
+  return request<CashBalance>('/cash/transactions', { method: 'POST', body: JSON.stringify(data) })
 }
 
 // Securities search

@@ -78,6 +78,24 @@
 .ia-org-switch__item:hover { background: var(--surface-sunken); color: var(--text-1); }
 .ia-org-switch__item.is-active { color: var(--accent); background: var(--accent-soft); }
 
+/* ---- Action menu ---- */
+.ia-action-menu { position: relative; }
+.ia-action-menu__dropdown {
+  position: absolute; top: calc(100% + 6px); right: 0;
+  background: var(--surface-card); border: 1px solid var(--border-1);
+  border-radius: var(--radius-md); box-shadow: var(--shadow-md);
+  z-index: 200; overflow: hidden; min-width: 220px; padding: 4px;
+}
+.ia-action-menu__item {
+  display: flex; align-items: center; gap: 10px; width: 100%; text-align: left;
+  padding: 9px 12px; border: 0; border-radius: var(--radius-sm); background: transparent; cursor: pointer;
+  font-size: var(--text-sm); color: var(--text-2); font-weight: var(--fw-medium); font-family: inherit;
+}
+.ia-action-menu__item:hover { background: var(--surface-sunken); color: var(--text-1); }
+.ia-action-menu__item svg { color: var(--text-3); flex-shrink: 0; }
+.ia-action-menu__item:hover svg { color: var(--accent); }
+.ia-action-menu__divider { border: 0; border-top: 1px solid var(--divider); margin: 4px 6px; }
+
 /* ---- Main column ---- */
 .ia-main { display: flex; flex-direction: column; overflow: hidden; }
 .ia-topbar {

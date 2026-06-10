@@ -9,31 +9,6 @@ import { MODAL_CSS } from './modalShared'
 import type { SecuritySearchResult } from '../../api/client'
 import type { Account } from '@/types'
 
-const CSS = `
-.ia-toggle-row { display: flex; gap: 8px; }
-.ia-toggle-btn {
-  flex: 1; padding: 9px 14px; border-radius: var(--radius-md);
-  border: 1px solid var(--border-1); background: transparent;
-  cursor: pointer; font-family: inherit; font-size: var(--text-sm);
-  font-weight: var(--fw-medium); color: var(--text-2);
-  transition: all var(--dur-fast) var(--ease-out);
-  display: flex; align-items: center; justify-content: center; gap: 7px;
-}
-.ia-toggle-btn:hover { background: var(--surface-sunken); color: var(--text-1); }
-.ia-toggle-btn.is-active { border-color: var(--accent); background: var(--accent-soft); color: var(--accent-hover); font-weight: var(--fw-semibold); }
-.ia-toggle-btn.is-sell.is-active { border-color: var(--loss); background: var(--loss-soft); color: var(--loss); }
-.ia-field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-.ia-rate-refresh {
-  background: transparent; border: 0; cursor: pointer; color: var(--text-3);
-  display: flex; align-items: center; padding: 0; line-height: 0;
-  transition: color var(--dur-fast) var(--ease-out);
-}
-.ia-rate-refresh:hover:not(:disabled) { color: var(--accent); }
-.ia-rate-refresh:disabled { cursor: default; }
-.ia-rate-refresh.is-spinning svg { animation: ia-spin 0.7s linear infinite; }
-@keyframes ia-spin { to { transform: rotate(360deg); } }
-`
-
 const CURRENCIES = ['RUB', 'USD', 'EUR', 'CNY']
 const today = () => new Date().toISOString().slice(0, 10)
 
@@ -72,7 +47,6 @@ const EMPTY: FormState = {
 
 export function TradeModal({ open, onClose }: Props) {
   injectOnce('ia-modal', MODAL_CSS)
-  injectOnce('ia-trade-modal', CSS)
 
   const bump = usePortfolioStore((s) => s.bump)
   const [accounts, setAccounts] = useState<Account[]>([])

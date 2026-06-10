@@ -1,4 +1,5 @@
 import type { Request, Response } from 'express'
+import { fetchRubRate } from '../services/fxService.js'
 
 interface MoexResponse {
   securities: {
@@ -38,40 +39,16 @@ function detectExchange(board: string): string {
   return 'MOEX'
 }
 
-interface CbrResponse {
-  Date: string
-  Valute: Record<string, { Value: number; Nominal: number; CharCode: string }>
-}
-
 export async function rate(req: Request, res: Response): Promise<void> {
-  const currency = (req.query.currency as string | undefined)?.toUpperCase()
-
-  if (!currency || currency === 'RUB') {
-    res.json({ currency: 'RUB', rate: 1, date: new Date().toISOString().slice(0, 10) })
-    return
-  }
+  const currency = (req.query.currency as string | undefined)?.toUpperCase() ?? 'RUB'
 
   try {
-    const upstream = await fetch('https://www.cbr-xml-daily.ru/daily_json.js', {
-      signal: AbortSignal.timeout(5000),
-    })
-    if (!upstream.ok) {
-      res.status(502).json({ error: 'Ошибка загрузки курса валют' })
-      return
-    }
-
-    const body = (await upstream.json()) as CbrResponse
-    const valute = body.Valute[currency]
-    if (!valute) {
+    const result = await fetchRubRate(currency)
+    if (!result) {
       res.status(404).json({ error: `Курс ${currency} не найден` })
       return
     }
-
-    res.json({
-      currency,
-      rate: Math.round((valute.Value / valute.Nominal) * 10000) / 10000,
-      date: body.Date.slice(0, 10),
-    })
+    res.json({ currency, rate: result.rate, date: result.date })
   } catch (err) {
     console.error('exchange rate error:', err)
     res.status(502).json({ error: 'Ошибка получения курса валют' })

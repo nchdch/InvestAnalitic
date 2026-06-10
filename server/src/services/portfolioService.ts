@@ -1,6 +1,8 @@
 ﻿import { pool } from '../db/pool.js'
 import { updatePosition } from './positionService.js'
 import { fetchMoexPrice } from './moexService.js'
+import { listCashBalances } from './cashService.js'
+import { fetchRubRate } from './fxService.js'
 
 interface DbPosition {
   id: string
@@ -96,9 +98,32 @@ export async function getPortfolioSummary(orgId?: string) {
     byAccount.set(p.account_id, list)
   }
 
+  // Денежные остатки по счетам
+  const cashBalances = await listCashBalances(accounts.map((a) => a.id))
+  const cashByAccount = new Map<string, typeof cashBalances>()
+  for (const c of cashBalances) {
+    const list = cashByAccount.get(c.accountId) ?? []
+    list.push(c)
+    cashByAccount.set(c.accountId, list)
+  }
+
+  // Курсы валют для приведения остатков к рублю
+  const cashCurrencies = [...new Set(cashBalances.map((c) => c.currency).filter((c) => c !== 'RUB'))]
+  const rubRates = new Map<string, number>()
+  for (const cur of cashCurrencies) {
+    try {
+      const r = await fetchRubRate(cur)
+      rubRates.set(cur, r?.rate ?? 1)
+    } catch (err) {
+      console.error(`fx rate error for ${cur}:`, err)
+      rubRates.set(cur, 1)
+    }
+  }
+
   let totalValue = 0
   let totalEquityValue = 0
   let totalBondValue = 0
+  let totalCashValue = 0
   let totalCost = 0
   let totalUnrealizedPnl = 0
   let totalDayChange = 0
@@ -218,7 +243,21 @@ export async function getPortfolioSummary(orgId?: string) {
       }
     }
 
-    totalValue += accValue
+    // Денежные остатки счёта, приведённые к рублю
+    const cashRows = (cashByAccount.get(acc.id) ?? []).map((c) => {
+      const rubRate = c.currency === 'RUB' ? 1 : (rubRates.get(c.currency) ?? 1)
+      const rubEquivalent = Math.round(c.amount * rubRate * 100) / 100
+      return {
+        balance: { accountId: c.accountId, currency: c.currency, amount: c.amount },
+        rubEquivalent,
+        accountWeight: 0,
+      }
+    })
+    const accCashValue = cashRows.reduce((sum, r) => sum + r.rubEquivalent, 0)
+    const accTotalValue = accValue + accCashValue
+
+    totalValue += accTotalValue
+    totalCashValue += accCashValue
     totalUnrealizedPnl += accPnl
 
     const accPnlPct = accCost > 0 ? Math.round((accPnl / accCost) * 10000) / 100 : 0
@@ -227,7 +266,7 @@ export async function getPortfolioSummary(orgId?: string) {
       id: acc.id,
       name: acc.name,
       broker: acc.broker,
-      totalValue: accValue,
+      totalValue: Math.round(accTotalValue * 100) / 100,
       investedValue: Math.round(accCost * 100) / 100,
       unrealizedPnl: Math.round(accPnl * 100) / 100,
       unrealizedPnlPercent: accPnlPct,
@@ -235,7 +274,7 @@ export async function getPortfolioSummary(orgId?: string) {
       portfolioWeight: 0,
       equityRows,
       bondRows,
-      cashRows: [] as unknown[],
+      cashRows,
     }
   })
 
@@ -245,6 +284,9 @@ export async function getPortfolioSummary(orgId?: string) {
     for (const row of [...acc.equityRows, ...acc.bondRows]) {
       row.portfolioWeight = totalValue > 0 ? Math.round((row.currentValue / totalValue) * 10000) / 100 : 0
     }
+    for (const row of acc.cashRows) {
+      row.accountWeight = acc.totalValue > 0 ? Math.round((row.rubEquivalent / acc.totalValue) * 10000) / 100 : 0
+    }
   }
 
   const unrealizedPnlPercent = totalCost > 0
@@ -253,6 +295,7 @@ export async function getPortfolioSummary(orgId?: string) {
 
   const equityWeight = totalValue > 0 ? Math.round((totalEquityValue / totalValue) * 10000) / 100 : 0
   const bondWeight = totalValue > 0 ? Math.round((totalBondValue / totalValue) * 10000) / 100 : 0
+  const cashWeight = totalValue > 0 ? Math.round((totalCashValue / totalValue) * 10000) / 100 : 0
 
   return {
     totalValue: Math.round(totalValue * 100) / 100,
@@ -260,10 +303,10 @@ export async function getPortfolioSummary(orgId?: string) {
     dayChange: Math.round(totalDayChange * 100) / 100,
     equityValue: Math.round(totalEquityValue * 100) / 100,
     bondValue: Math.round(totalBondValue * 100) / 100,
-    cashValue: 0,
+    cashValue: Math.round(totalCashValue * 100) / 100,
     equityWeight,
     bondWeight,
-    cashWeight: Math.round((100 - equityWeight - bondWeight) * 100) / 100,
+    cashWeight,
     unrealizedPnl: Math.round(totalUnrealizedPnl * 100) / 100,
     unrealizedPnlPercent,
     forwardDividendYield: null,

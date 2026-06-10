@@ -2,7 +2,7 @@
 import { useNavigate } from 'react-router-dom'
 import logoMark from '../assets/logo-mark.svg'
 import { Button, IconButton, Avatar } from '../components'
-import { LayoutDashboard, Sparkles, Scale, Calendar, Plus, Bell, Search, Settings, LogOut, Building2, ChevronDown, ChevronUp, ArrowUpRight, ArrowDownRight, Layers } from 'lucide-react'
+import { LayoutDashboard, Sparkles, Scale, Calendar, Plus, Bell, Search, Settings, LogOut, Building2, ChevronDown, ChevronUp, ArrowUpRight, ArrowDownRight, Layers, TrendingUp, Wallet, Upload } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { usePortfolio } from '../hooks/usePortfolio'
 import { useAuthStore } from '../store/authStore'
@@ -34,6 +34,8 @@ interface Props {
   onNav: (page: PageId) => void
   onAddTrade: () => void
   onAddPortfolio: () => void
+  onAddDeposit: () => void
+  onImportTrades: () => void
   children: React.ReactNode
 }
 
@@ -44,7 +46,7 @@ const PAGE_TITLE: Record<PageId, { title: string; sub: string }> = {
   calendar:   { title: 'Выплаты',       sub: 'Дивиденды и купоны' },
 }
 
-export function AppShell({ page, onNav, onAddTrade, onAddPortfolio, children }: Props) {
+export function AppShell({ page, onNav, onAddTrade, onAddPortfolio, onAddDeposit, onImportTrades, children }: Props) {
   const { accounts } = usePortfolio()
   const user = useAuthStore((s) => s.user)
   const clearAuth = useAuthStore((s) => s.clearAuth)
@@ -56,6 +58,8 @@ export function AppShell({ page, onNav, onAddTrade, onAddPortfolio, children }: 
 
   const [orgOpen, setOrgOpen] = useState(false)
   const dropdownRef = useRef<HTMLDivElement>(null)
+  const [actionOpen, setActionOpen] = useState(false)
+  const actionRef = useRef<HTMLDivElement>(null)
 
   // Подтягиваем актуальные котировки при каждом обновлении страницы
   useEffect(() => {
@@ -78,6 +82,17 @@ export function AppShell({ page, onNav, onAddTrade, onAddPortfolio, children }: 
     document.addEventListener('mousedown', handle)
     return () => document.removeEventListener('mousedown', handle)
   }, [orgOpen])
+
+  useEffect(() => {
+    if (!actionOpen) return
+    function handle(e: MouseEvent) {
+      if (actionRef.current && !actionRef.current.contains(e.target as Node)) {
+        setActionOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handle)
+    return () => document.removeEventListener('mousedown', handle)
+  }, [actionOpen])
 
   const handleLogout = async () => {
     await logoutUser().catch(() => {})
@@ -171,9 +186,6 @@ export function AppShell({ page, onNav, onAddTrade, onAddPortfolio, children }: 
               </button>
             )
           })}
-          <button className="ia-navitem ia-navitem--ghost" onClick={onAddPortfolio}>
-            <Plus size={16} /><span>Добавить портфель</span>
-          </button>
         </div>
 
         <div className="ia-sidebar__user">
@@ -196,7 +208,32 @@ export function AppShell({ page, onNav, onAddTrade, onAddPortfolio, children }: 
               <input placeholder="Поиск тикера, эмитента…" />
             </div>
             <IconButton variant="outlined" label="Уведомления"><Bell size={18} /></IconButton>
-            <Button leftIcon={<Plus size={18} />} onClick={onAddTrade}>Добавить сделку</Button>
+            <div className="ia-action-menu" ref={actionRef}>
+              <Button
+                leftIcon={<Plus size={18} />}
+                rightIcon={actionOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                onClick={() => setActionOpen((v) => !v)}
+              >
+                Действие
+              </Button>
+              {actionOpen && (
+                <div className="ia-action-menu__dropdown">
+                  <button className="ia-action-menu__item" onClick={() => { setActionOpen(false); onAddTrade() }}>
+                    <TrendingUp size={15} /> Добавить сделку
+                  </button>
+                  <button className="ia-action-menu__item" onClick={() => { setActionOpen(false); onAddPortfolio() }}>
+                    <Layers size={15} /> Добавить портфель
+                  </button>
+                  <button className="ia-action-menu__item" onClick={() => { setActionOpen(false); onAddDeposit() }}>
+                    <Wallet size={15} /> Добавить депозит
+                  </button>
+                  <hr className="ia-action-menu__divider" />
+                  <button className="ia-action-menu__item" onClick={() => { setActionOpen(false); onImportTrades() }}>
+                    <Upload size={15} /> Импорт сделок
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         </header>
         <div className="ia-content">{children}</div>

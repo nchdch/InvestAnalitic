@@ -14,6 +14,8 @@ import { RebalancePage } from './pages/RebalancePage'
 import { CalendarPage } from './pages/CalendarPage'
 import { TradeModal } from './components/portfolio/TradeModal'
 import { PortfolioModal } from './components/portfolio/PortfolioModal'
+import { DepositModal } from './components/portfolio/DepositModal'
+import { ImportModal } from './components/portfolio/ImportModal'
 import { useAuthStore } from './store/authStore'
 import { useOrgStore, getSavedOrgId } from './store/orgStore'
 import { refreshSession } from './api/auth'
@@ -23,6 +25,8 @@ function AppLayout() {
   const [page, setPage] = useState<PageId>('dashboard')
   const [tradeOpen, setTradeOpen] = useState(false)
   const [portfolioOpen, setPortfolioOpen] = useState(false)
+  const [depositOpen, setDepositOpen] = useState(false)
+  const [importOpen, setImportOpen] = useState(false)
   const { orgs, activeOrg, isLoading: orgLoading, setActiveOrg } = useOrgStore()
   const navigate = useNavigate()
 
@@ -45,7 +49,14 @@ function AppLayout() {
 
   return (
     <>
-      <AppShell page={page} onNav={setPage} onAddTrade={() => setTradeOpen(true)} onAddPortfolio={() => setPortfolioOpen(true)}>
+      <AppShell
+        page={page}
+        onNav={setPage}
+        onAddTrade={() => setTradeOpen(true)}
+        onAddPortfolio={() => setPortfolioOpen(true)}
+        onAddDeposit={() => setDepositOpen(true)}
+        onImportTrades={() => setImportOpen(true)}
+      >
         {page === 'dashboard' && <PortfolioPage />}
         {page === 'assistant' && <AssistantPage />}
         {page === 'rebalance' && <RebalancePage />}
@@ -53,6 +64,8 @@ function AppLayout() {
       </AppShell>
       <TradeModal open={tradeOpen} onClose={() => setTradeOpen(false)} />
       <PortfolioModal open={portfolioOpen} onClose={() => setPortfolioOpen(false)} />
+      <DepositModal open={depositOpen} onClose={() => setDepositOpen(false)} />
+      <ImportModal open={importOpen} onClose={() => setImportOpen(false)} />
     </>
   )
 }
