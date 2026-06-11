@@ -1,4 +1,4 @@
-﻿import type { Account, Position, Trade, Payment, AccountSummary, CashBalance } from '@/types'
+﻿import type { Account, Position, Trade, Payment, AccountSummary, CashBalance, PositionNote } from '@/types'
 import { useAuthStore } from '@/store/authStore'
 import { useOrgStore } from '@/store/orgStore'
 
@@ -128,6 +128,20 @@ export function deletePayment(id: string): Promise<void> {
 export function getPaymentStats(accountId?: string): Promise<{ totalGross: number; totalNet: number; totalTax: number; count: number }> {
   const q = accountId ? `?accountId=${accountId}` : ''
   return request(`/payments/stats${q}`)
+}
+
+// Заметки по позициям
+export function getNotes(positionId: string): Promise<PositionNote[]> {
+  return request<PositionNote[]>(`/notes?positionId=${encodeURIComponent(positionId)}`)
+}
+export function createNote(positionId: string, body: string): Promise<PositionNote> {
+  return request<PositionNote>('/notes', { method: 'POST', body: JSON.stringify({ positionId, body }) })
+}
+export function updateNote(id: string, body: string): Promise<PositionNote> {
+  return request<PositionNote>(`/notes/${id}`, { method: 'PUT', body: JSON.stringify({ body }) })
+}
+export function deleteNote(id: string): Promise<void> {
+  return request<void>(`/notes/${id}`, { method: 'DELETE' })
 }
 
 // Cash balances

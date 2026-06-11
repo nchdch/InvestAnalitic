@@ -11,6 +11,7 @@ import { authRouter } from './routes/auth.js'
 import { orgRouter } from './routes/orgs.js'
 import { securitiesRouter } from './routes/securities.js'
 import { cashRouter } from './routes/cash.js'
+import { noteRouter } from './routes/notes.js'
 
 export function createApp() {
   const app = express()
@@ -29,6 +30,7 @@ export function createApp() {
   app.use('/api/portfolio', portfolioRouter)
   app.use('/api/securities', securitiesRouter)
   app.use('/api/cash', cashRouter)
+  app.use('/api/notes', noteRouter)
 
   app.use((req, res) => {
     res.status(404).json({ error: 'Not found', path: req.path })

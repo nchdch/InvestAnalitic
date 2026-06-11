@@ -113,6 +113,7 @@ export async function updatePosition(id: string, patch: Partial<CreatePositionIn
 
   const add = (col: string, val: unknown) => { fields.push(`${col} = $${i++}`); vals.push(val) }
 
+  if (patch.accountId !== undefined) add('account_id', patch.accountId)
   if (patch.name !== undefined) add('name', patch.name)
   if (patch.quantity !== undefined) add('quantity', patch.quantity)
   if (patch.averagePrice !== undefined) add('average_price', patch.averagePrice)
