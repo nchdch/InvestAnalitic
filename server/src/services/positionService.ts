@@ -22,6 +22,15 @@ function toRow(r: Record<string, unknown>) {
     couponDates: r.coupon_dates ?? undefined,
     maturityDate: r.maturity_date ?? undefined,
     accruedInterest: r.accrued_interest != null ? Number(r.accrued_interest) : undefined,
+    // справочные данные облигации с MOEX
+    lotSize: r.lot_size != null ? Number(r.lot_size) : undefined,
+    nextCouponDate: r.next_coupon_date ?? undefined,
+    nextCouponValue: r.next_coupon_value != null ? Number(r.next_coupon_value) : undefined,
+    currentAccruedInterest: r.current_accrued_interest != null ? Number(r.current_accrued_interest) : undefined,
+    initialFaceValue: r.initial_face_value != null ? Number(r.initial_face_value) : undefined,
+    amortization: r.amortization ?? undefined,
+    offerDate: r.offer_date ?? undefined,
+    bondInfoUpdatedAt: r.bond_info_updated_at ?? undefined,
     createdAt: r.created_at,
     updatedAt: r.updated_at,
   }
@@ -66,6 +75,14 @@ export interface CreatePositionInput {
   couponDates?: string[]
   maturityDate?: string
   accruedInterest?: number
+  lotSize?: number
+  nextCouponDate?: string | null
+  nextCouponValue?: number | null
+  currentAccruedInterest?: number | null
+  initialFaceValue?: number | null
+  amortization?: { date: string; valuePrc: number; value: number }[] | null
+  offerDate?: string | null
+  bondInfoUpdatedAt?: Date
 }
 
 export async function createPosition(input: CreatePositionInput) {
@@ -110,6 +127,16 @@ export async function updatePosition(id: string, patch: Partial<CreatePositionIn
   if (patch.couponRate !== undefined) add('coupon_rate', patch.couponRate)
   if (patch.maturityDate !== undefined) add('maturity_date', patch.maturityDate)
   if (patch.accruedInterest !== undefined) add('accrued_interest', patch.accruedInterest)
+  if (patch.faceValue !== undefined) add('face_value', patch.faceValue)
+  if (patch.couponDates !== undefined) add('coupon_dates', JSON.stringify(patch.couponDates))
+  if (patch.lotSize !== undefined) add('lot_size', patch.lotSize)
+  if (patch.nextCouponDate !== undefined) add('next_coupon_date', patch.nextCouponDate)
+  if (patch.nextCouponValue !== undefined) add('next_coupon_value', patch.nextCouponValue)
+  if (patch.currentAccruedInterest !== undefined) add('current_accrued_interest', patch.currentAccruedInterest)
+  if (patch.initialFaceValue !== undefined) add('initial_face_value', patch.initialFaceValue)
+  if (patch.amortization !== undefined) add('amortization', patch.amortization ? JSON.stringify(patch.amortization) : null)
+  if (patch.offerDate !== undefined) add('offer_date', patch.offerDate)
+  if (patch.bondInfoUpdatedAt !== undefined) add('bond_info_updated_at', patch.bondInfoUpdatedAt)
 
   if (fields.length === 0) return getPosition(id)
 

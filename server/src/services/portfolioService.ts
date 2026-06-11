@@ -1,6 +1,6 @@
 ﻿import { pool } from '../db/pool.js'
 import { updatePosition } from './positionService.js'
-import { fetchMoexPrice } from './moexService.js'
+import { fetchMoexPrice, fetchMoexBondReference } from './moexService.js'
 import { fetchForeignPrice } from './foreignMarketService.js'
 import { listCashBalances } from './cashService.js'
 import { fetchRubRate } from './fxService.js'
@@ -24,6 +24,14 @@ interface DbPosition {
   coupon_dates: string[] | null
   maturity_date: string | null
   accrued_interest: string | null
+  lot_size: string | null
+  next_coupon_date: string | null
+  next_coupon_value: string | null
+  current_accrued_interest: string | null
+  initial_face_value: string | null
+  amortization: { date: string; valuePrc: number; value: number }[] | null
+  offer_date: string | null
+  bond_info_updated_at: string | null
 }
 
 interface DbAccount {
@@ -247,6 +255,14 @@ export async function getPortfolioSummary(orgId?: string) {
             couponDates: p.coupon_dates ?? [],
             maturityDate: p.maturity_date ?? '',
             accruedInterest: p.accrued_interest != null ? Number(p.accrued_interest) : 0,
+            lotSize: p.lot_size != null ? Number(p.lot_size) : undefined,
+            nextCouponDate: p.next_coupon_date ?? undefined,
+            nextCouponValue: p.next_coupon_value != null ? Number(p.next_coupon_value) : undefined,
+            currentAccruedInterest: p.current_accrued_interest != null ? Number(p.current_accrued_interest) : undefined,
+            initialFaceValue: p.initial_face_value != null ? Number(p.initial_face_value) : undefined,
+            amortization: p.amortization ?? undefined,
+            offerDate: p.offer_date ?? undefined,
+            bondInfoUpdatedAt: p.bond_info_updated_at ?? undefined,
           },
           currentPrice: lastPrice,
           currentValue: value,
@@ -379,6 +395,30 @@ export async function refreshPrices(orgId?: string) {
     }
     await updatePosition(p.id, { lastPrice: price })
     updated++
+
+    if (p.asset_type === 'bond' && p.exchange === 'MOEX') {
+      try {
+        const ref = await fetchMoexBondReference(p.ticker)
+        if (ref) {
+          await updatePosition(p.id, {
+            faceValue: ref.faceValue ?? undefined,
+            couponRate: ref.couponRate ?? undefined,
+            couponDates: ref.couponDates,
+            maturityDate: ref.maturityDate ?? undefined,
+            lotSize: ref.lotSize ?? undefined,
+            nextCouponDate: ref.nextCouponDate,
+            nextCouponValue: ref.nextCouponValue,
+            currentAccruedInterest: ref.accruedInterest,
+            initialFaceValue: ref.initialFaceValue,
+            amortization: ref.amortization.length > 0 ? ref.amortization : null,
+            offerDate: ref.offerDate,
+            bondInfoUpdatedAt: new Date(),
+          })
+        }
+      } catch (err) {
+        console.error(`bond reference refresh error for ${p.ticker}:`, err)
+      }
+    }
   }
 
   return { updated, failed, total: positions.length }
