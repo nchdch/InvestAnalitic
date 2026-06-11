@@ -1,18 +1,127 @@
 import React, { useEffect, useRef, useState } from 'react'
-import { Card, StatCard, PnLValue, Badge, AllocationBar, Avatar, Sparkline, Tabs, Button, IconButton } from '../components'
-import { Sparkles, Download, PackageOpen, ChevronDown, ChevronRight } from 'lucide-react'
+import { Card, StatCard, PnLValue, Badge, AllocationBar, Avatar, Sparkline, Tabs, Button, IconButton, RowActionsMenu } from '../components'
+import {
+  Sparkles, Download, PackageOpen, ChevronDown, ChevronRight,
+  Receipt, StickyNote, Plus, Minus, Coins, Pencil, ArrowRightLeft, Trash2,
+  ArrowDownToLine, ArrowUpFromLine,
+} from 'lucide-react'
 import { usePortfolio } from '../hooks/usePortfolio'
 import { usePortfolioStore } from '../store/portfolioStore'
 import { usePositionTrades } from '../hooks/usePositionTrades'
-import { getPriceHistory } from '../api/client'
+import { getPriceHistory, deletePosition } from '../api/client'
 import { getTickerLogoUrl } from '../utils/logos'
 import { formatPrice, formatDuration } from '../utils/format'
 import { AssetDetailPage } from './AssetDetailPage'
-import type { AccountSummary, EquityRow, BondRow } from '@/types'
+import { TradesListModal } from '../components/portfolio/TradesListModal'
+import { NotesModal } from '../components/portfolio/NotesModal'
+import { PaymentRecordModal } from '../components/portfolio/PaymentRecordModal'
+import { EditQuantityModal } from '../components/portfolio/EditQuantityModal'
+import { TransferPositionModal } from '../components/portfolio/TransferPositionModal'
+import { TradeModal } from '../components/portfolio/TradeModal'
+import { DepositModal } from '../components/portfolio/DepositModal'
+import type { TradeModalInitial } from '../components/portfolio/TradeModal'
+import type { DepositModalInitial } from '../components/portfolio/DepositModal'
+import type { AccountSummary, EquityRow, BondRow, CashRow, Position } from '@/types'
+import type { RowAction } from '../components'
 
 const RUB = new Intl.NumberFormat('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 const NUM0 = new Intl.NumberFormat('ru-RU')
 const money = (v: number) => RUB.format(v) + ' ₽'
+
+// ─── Контекстное меню действий по активу ──────────────────────────────────────
+
+/** Описывает, какая модалка должна быть открыта по выбору пункта контекстного меню строки. */
+export type ActiveModal =
+  | { kind: 'trades'; accountId: string; ticker: string; name?: string }
+  | { kind: 'notes'; positionId: string; ticker: string; name?: string }
+  | { kind: 'trade'; initial: TradeModalInitial }
+  | { kind: 'payment'; accountId: string; position: Position }
+  | { kind: 'editQty'; position: Position }
+  | { kind: 'transfer'; position: Position }
+  | { kind: 'deposit'; initial: DepositModalInitial }
+
+/** Пункты меню «⋮» для строки акции/облигации (см. CLAUDE.md: все сделки, заметки, купить/продать и т.д.). */
+function buildPositionActions(position: Position, openModal: (m: ActiveModal) => void, onDelete: (position: Position) => void): RowAction[] {
+  const isBond = position.assetType === 'bond'
+  const tradeBase: TradeModalInitial = {
+    accountId: position.accountId,
+    ticker: position.ticker,
+    name: position.name,
+    assetType: position.assetType,
+    exchange: position.exchange,
+    currency: position.currency,
+  }
+  return [
+    {
+      key: 'trades',
+      label: 'Все сделки',
+      icon: <Receipt size={15} />,
+      onClick: () => openModal({ kind: 'trades', accountId: position.accountId, ticker: position.ticker, name: position.name }),
+    },
+    {
+      key: 'notes',
+      label: 'Заметки',
+      icon: <StickyNote size={15} />,
+      onClick: () => openModal({ kind: 'notes', positionId: position.id, ticker: position.ticker, name: position.name }),
+    },
+    {
+      key: 'buy',
+      label: 'Купить',
+      icon: <Plus size={15} />,
+      onClick: () => openModal({ kind: 'trade', initial: { ...tradeBase, side: 'buy' } }),
+    },
+    {
+      key: 'sell',
+      label: 'Продать',
+      icon: <Minus size={15} />,
+      onClick: () => openModal({ kind: 'trade', initial: { ...tradeBase, side: 'sell' } }),
+    },
+    {
+      key: 'payment',
+      label: isBond ? 'Купон / амортизация / погашение' : 'Дивиденды',
+      icon: <Coins size={15} />,
+      onClick: () => openModal({ kind: 'payment', accountId: position.accountId, position }),
+    },
+    {
+      key: 'editQty',
+      label: 'Изменить количество',
+      icon: <Pencil size={15} />,
+      onClick: () => openModal({ kind: 'editQty', position }),
+    },
+    {
+      key: 'transfer',
+      label: 'Перенести на другой счёт',
+      icon: <ArrowRightLeft size={15} />,
+      onClick: () => openModal({ kind: 'transfer', position }),
+    },
+    {
+      key: 'delete',
+      label: 'Удалить',
+      icon: <Trash2 size={15} />,
+      danger: true,
+      separatorBefore: true,
+      onClick: () => onDelete(position),
+    },
+  ]
+}
+
+/** Пункты меню «⋮» для строки денежного остатка — минимальный набор, т.к. у кэша нет id и CRUD по записям. */
+function buildCashActions(row: CashRow, openModal: (m: ActiveModal) => void): RowAction[] {
+  return [
+    {
+      key: 'deposit',
+      label: 'Пополнить',
+      icon: <ArrowDownToLine size={15} />,
+      onClick: () => openModal({ kind: 'deposit', initial: { accountId: row.balance.accountId, currency: row.balance.currency, direction: 'deposit' } }),
+    },
+    {
+      key: 'withdraw',
+      label: 'Списать',
+      icon: <ArrowUpFromLine size={15} />,
+      onClick: () => openModal({ kind: 'deposit', initial: { accountId: row.balance.accountId, currency: row.balance.currency, direction: 'withdrawal' } }),
+    },
+  ]
+}
 
 function Spinner() {
   return (
@@ -272,7 +381,11 @@ function SummaryReportTable({ accounts, totalValue, onSelectTicker }: { accounts
 
 // ─── Все активы ───────────────────────────────────────────────────────────────
 
-function AllAssetsTable({ accounts }: { accounts: AccountSummary[] }) {
+function AllAssetsTable({ accounts, openModal, onDelete }: {
+  accounts: AccountSummary[]
+  openModal: (m: ActiveModal) => void
+  onDelete: (position: Position) => void
+}) {
   const allRows = accounts.flatMap((acc) => [
     ...acc.equityRows.map((r) => ({ ...r, accountName: acc.name, type: 'equity' as const })),
     ...acc.bondRows.map((r) => ({ ...r, accountName: acc.name, type: 'bond' as const })),
@@ -295,6 +408,7 @@ function AllAssetsTable({ accounts }: { accounts: AccountSummary[] }) {
           <th style={{ textAlign: 'right' }}>Изм. за день</th>
           <th style={{ textAlign: 'right' }}>Вес</th>
           <th>Портфель</th>
+          <th style={{ width: 48 }}></th>
         </tr>
       </thead>
       <tbody>
@@ -332,6 +446,9 @@ function AllAssetsTable({ accounts }: { accounts: AccountSummary[] }) {
               </td>
               <td className="r ia-num" style={{ color: 'var(--text-3)' }}>{row.portfolioWeight.toFixed(1)}%</td>
               <td style={{ color: 'var(--text-3)', fontSize: 'var(--text-xs)' }}>{row.accountName}</td>
+              <td className="r">
+                <RowActionsMenu actions={buildPositionActions(row.position, openModal, onDelete)} />
+              </td>
             </tr>
           )
         })}
@@ -407,12 +524,14 @@ function EquityDetailPanel({ row, sparkline }: { row: EquityRow; sparkline: numb
   )
 }
 
-function EquityTableRow({ row, expanded, onToggle, onSelectTicker, sparkline }: {
+function EquityTableRow({ row, expanded, onToggle, onSelectTicker, sparkline, openModal, onDelete }: {
   row: EquityRow
   expanded: boolean
   onToggle: () => void
   onSelectTicker: (ticker: string) => void
   sparkline: number[]
+  openModal: (m: ActiveModal) => void
+  onDelete: (position: Position) => void
 }) {
   const { position } = row
   return (
@@ -442,10 +561,13 @@ function EquityTableRow({ row, expanded, onToggle, onSelectTicker, sparkline }: 
             : <span style={{ color: 'var(--text-4)', fontSize: 'var(--text-xs)' }}>—</span>}
         </td>
         <td className="r ia-num" style={{ color: 'var(--text-3)' }}>{row.portfolioWeight.toFixed(1)}%</td>
+        <td className="r">
+          <RowActionsMenu actions={buildPositionActions(position, openModal, onDelete)} />
+        </td>
       </tr>
       {expanded && (
         <tr className="ia-row-detail">
-          <td colSpan={8}><EquityDetailPanel row={row} sparkline={sparkline} /></td>
+          <td colSpan={9}><EquityDetailPanel row={row} sparkline={sparkline} /></td>
         </tr>
       )}
     </React.Fragment>
@@ -534,11 +656,13 @@ function BondDetailPanel({ row, sparkline }: { row: BondRow; sparkline: number[]
   )
 }
 
-function BondTableRow({ row, expanded, onToggle, sparkline }: {
+function BondTableRow({ row, expanded, onToggle, sparkline, openModal, onDelete }: {
   row: BondRow
   expanded: boolean
   onToggle: () => void
   sparkline: number[]
+  openModal: (m: ActiveModal) => void
+  onDelete: (position: Position) => void
 }) {
   const { position } = row
   return (
@@ -570,10 +694,13 @@ function BondTableRow({ row, expanded, onToggle, sparkline }: {
           {position.maturityDate ? new Date(position.maturityDate).toLocaleDateString('ru-RU') : '—'}
         </td>
         <td className="r ia-num" style={{ color: 'var(--text-3)' }}>{row.portfolioWeight.toFixed(1)}%</td>
+        <td className="r">
+          <RowActionsMenu actions={buildPositionActions(position, openModal, onDelete)} />
+        </td>
       </tr>
       {expanded && (
         <tr className="ia-row-detail">
-          <td colSpan={8}><BondDetailPanel row={row} sparkline={sparkline} /></td>
+          <td colSpan={9}><BondDetailPanel row={row} sparkline={sparkline} /></td>
         </tr>
       )}
     </React.Fragment>
@@ -587,9 +714,11 @@ export function PortfolioPage() {
   const { summary, accounts, isLoading } = usePortfolio()
   const selectedAccountId = usePortfolioStore((s) => s.selectedAccountId)
   const setSelectedAccountId = usePortfolioStore((s) => s.setSelectedAccountId)
+  const bump = usePortfolioStore((s) => s.bump)
   const [priceHistory, setPriceHistory] = useState<Record<string, number[]>>({})
   const [selectedTicker, setSelectedTicker] = useState<string | null>(null)
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set())
+  const [activeModal, setActiveModal] = useState<ActiveModal | null>(null)
   const fetchedTickersRef = useRef<Set<string>>(new Set())
 
   function toggleRow(id: string) {
@@ -599,6 +728,12 @@ export function PortfolioPage() {
       else next.add(id)
       return next
     })
+  }
+
+  async function handleDeletePosition(position: Position) {
+    if (!window.confirm(`Удалить позицию ${position.ticker}? Это действие нельзя отменить.`)) return
+    await deletePosition(position.id)
+    bump()
   }
 
   useEffect(() => {
@@ -779,7 +914,7 @@ export function PortfolioPage() {
 
         {/* ── Все активы ── */}
         {tab === 'all' && (
-          <AllAssetsTable accounts={filteredAccounts} />
+          <AllAssetsTable accounts={filteredAccounts} openModal={setActiveModal} onDelete={handleDeletePosition} />
         )}
 
         {/* ── Акции ── */}
@@ -797,6 +932,7 @@ export function PortfolioPage() {
                     <th className="r">Прибыль</th>
                     <th className="r">Изм. за день</th>
                     <th className="r">Доля</th>
+                    <th style={{ width: 48 }}></th>
                   </tr>
                 </thead>
                 <tbody>
@@ -808,6 +944,8 @@ export function PortfolioPage() {
                       onToggle={() => toggleRow(row.position.id)}
                       onSelectTicker={setSelectedTicker}
                       sparkline={priceHistory[row.position.ticker] ?? []}
+                      openModal={setActiveModal}
+                      onDelete={handleDeletePosition}
                     />
                   ))}
                 </tbody>
@@ -829,6 +967,7 @@ export function PortfolioPage() {
                     <th className="r">YTM</th>
                     <th>Погашение</th>
                     <th className="r">Доля</th>
+                    <th style={{ width: 48 }}></th>
                   </tr>
                 </thead>
                 <tbody>
@@ -839,6 +978,8 @@ export function PortfolioPage() {
                       expanded={expandedRows.has(row.position.id)}
                       onToggle={() => toggleRow(row.position.id)}
                       sparkline={priceHistory[row.position.ticker] ?? []}
+                      openModal={setActiveModal}
+                      onDelete={handleDeletePosition}
                     />
                   ))}
                 </tbody>
@@ -858,6 +999,7 @@ export function PortfolioPage() {
                     <th className="r">Тек. стоимость, ₽</th>
                     <th className="r">Доля</th>
                     <th>Динамика</th>
+                    <th style={{ width: 48 }}></th>
                   </tr>
                 </thead>
                 <tbody>
@@ -878,12 +1020,71 @@ export function PortfolioPage() {
                           ? <Sparkline data={priceHistory[`cur:${row.balance.currency}`] ?? []} />
                           : <span style={{ color: 'var(--text-4)' }}>—</span>}
                       </td>
+                      <td className="r">
+                        <RowActionsMenu actions={buildCashActions(row, setActiveModal)} />
+                      </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
         )}
       </Card>
+
+      {/* ── Модалки контекстного меню «⋮» ── */}
+      {activeModal?.kind === 'trades' && (
+        <TradesListModal
+          open
+          onClose={() => setActiveModal(null)}
+          accountId={activeModal.accountId}
+          ticker={activeModal.ticker}
+          name={activeModal.name}
+        />
+      )}
+      {activeModal?.kind === 'notes' && (
+        <NotesModal
+          open
+          onClose={() => setActiveModal(null)}
+          positionId={activeModal.positionId}
+          ticker={activeModal.ticker}
+          name={activeModal.name}
+        />
+      )}
+      {activeModal?.kind === 'trade' && (
+        <TradeModal
+          open
+          onClose={() => setActiveModal(null)}
+          initial={activeModal.initial}
+        />
+      )}
+      {activeModal?.kind === 'payment' && (
+        <PaymentRecordModal
+          open
+          onClose={() => setActiveModal(null)}
+          accountId={activeModal.accountId}
+          position={activeModal.position}
+        />
+      )}
+      {activeModal?.kind === 'editQty' && (
+        <EditQuantityModal
+          open
+          onClose={() => setActiveModal(null)}
+          position={activeModal.position}
+        />
+      )}
+      {activeModal?.kind === 'transfer' && (
+        <TransferPositionModal
+          open
+          onClose={() => setActiveModal(null)}
+          position={activeModal.position}
+        />
+      )}
+      {activeModal?.kind === 'deposit' && (
+        <DepositModal
+          open
+          onClose={() => setActiveModal(null)}
+          initial={activeModal.initial}
+        />
+      )}
     </div>
   )
 }

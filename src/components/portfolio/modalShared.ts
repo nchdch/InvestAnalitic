@@ -64,6 +64,35 @@ export const MODAL_CSS = `
 .ia-trade-total__value { font-family: var(--font-mono); font-weight: var(--fw-bold); font-size: var(--text-base); color: var(--accent-hover); }
 .ia-trade-total__value.is-sell { color: var(--gain-600); }
 
+/* ---- Иконки-действия в строках таблиц/списков внутри модалок ---- */
+.ia-table-icon-btn {
+  background: transparent; border: 0; cursor: pointer; color: var(--text-3);
+  display: inline-flex; align-items: center; padding: 4px; border-radius: var(--radius-sm);
+  transition: background var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
+}
+.ia-table-icon-btn:hover:not(:disabled) { background: var(--loss-soft); color: var(--loss); }
+.ia-table-icon-btn:disabled { opacity: .5; cursor: default; }
+
+/* ---- Заметки по позиции ---- */
+.ia-notes-list { display: flex; flex-direction: column; gap: 10px; }
+.ia-note-item {
+  display: flex; flex-direction: column; gap: 6px; padding: 10px 12px;
+  border: 1px solid var(--border-1); border-radius: var(--radius-md); background: var(--surface-sunken);
+}
+.ia-note-item__head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.ia-note-item__date { font-size: var(--text-xs); color: var(--text-3); }
+.ia-note-item__body { font-size: var(--text-sm); color: var(--text-1); white-space: pre-wrap; word-break: break-word; }
+.ia-notes-empty { padding: 20px 0; text-align: center; color: var(--text-3); font-size: var(--text-sm); }
+.ia-notes-loading { padding: 20px 0; text-align: center; color: var(--text-3); font-size: var(--text-sm); }
+.ia-notes-add { display: flex; flex-direction: column; gap: 8px; }
+.ia-notes-add textarea {
+  width: 100%; min-height: 72px; resize: vertical; padding: 8px 10px;
+  border: 1px solid var(--border-1); border-radius: var(--radius-md);
+  background: var(--surface-card); color: var(--text-1); font-family: inherit; font-size: var(--text-sm);
+}
+.ia-notes-add textarea:focus { outline: none; border-color: var(--accent); }
+.ia-notes-add__foot { display: flex; justify-content: flex-end; }
+
 /* ---- Импорт сделок ---- */
 .ia-import-drop {
   border: 2px dashed var(--border-2); border-radius: var(--radius-lg);

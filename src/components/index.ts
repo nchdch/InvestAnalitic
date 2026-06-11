@@ -46,6 +46,9 @@ export type { DonutChartProps, DonutChartSlice } from './data/DonutChart'
 export { Tabs } from './navigation/Tabs'
 export type { TabsProps, TabItem } from './navigation/Tabs'
 
+export { RowActionsMenu } from './navigation/RowActionsMenu'
+export type { RowActionsMenuProps, RowAction } from './navigation/RowActionsMenu'
+
 export { AIMessage } from './ai/AIMessage'
 export type { AIMessageProps } from './ai/AIMessage'
 

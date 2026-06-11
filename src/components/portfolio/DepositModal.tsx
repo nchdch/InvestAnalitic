@@ -9,9 +9,17 @@ import type { Account } from '@/types'
 
 const CURRENCIES = ['RUB', 'USD', 'EUR', 'CNY']
 
+export interface DepositModalInitial {
+  accountId?: string
+  currency?: string
+  direction?: 'deposit' | 'withdrawal'
+}
+
 interface Props {
   open: boolean
   onClose: () => void
+  /** Предзаполнение формы при открытии из контекстного меню денежного остатка («Пополнить»/«Списать»). */
+  initial?: DepositModalInitial
 }
 
 interface FormState {
@@ -28,7 +36,7 @@ const EMPTY: FormState = {
   currency: 'RUB',
 }
 
-export function DepositModal({ open, onClose }: Props) {
+export function DepositModal({ open, onClose, initial }: Props) {
   injectOnce('ia-modal', MODAL_CSS)
 
   const bump = usePortfolioStore((s) => s.bump)
@@ -41,16 +49,17 @@ export function DepositModal({ open, onClose }: Props) {
 
   useEffect(() => {
     if (!open) return
-    setForm(EMPTY)
+    setForm({ ...EMPTY, ...initial })
     setError('')
     setRate(null)
     setRateDate('')
     getAccounts()
       .then((list) => {
         setAccounts(list)
-        if (list.length > 0) setForm((f) => ({ ...f, accountId: list[0].id }))
+        if (list.length > 0 && !initial?.accountId) setForm((f) => ({ ...f, accountId: list[0].id }))
       })
       .catch(() => setAccounts([]))
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open])
 
   // Подтягиваем курс ЦБ для отображения эквивалента в рублях

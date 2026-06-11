@@ -13,9 +13,21 @@ import type { Account } from '@/types'
 const CURRENCIES = ['RUB', 'USD', 'EUR', 'CNY']
 const today = () => new Date().toISOString().slice(0, 10)
 
+export interface TradeModalInitial {
+  accountId?: string
+  ticker?: string
+  name?: string
+  assetType?: 'equity' | 'bond'
+  exchange?: string
+  currency?: string
+  side?: 'buy' | 'sell'
+}
+
 interface Props {
   open: boolean
   onClose: () => void
+  /** Предзаполнение формы при открытии из контекстного меню позиции («Купить»/«Продать»). */
+  initial?: TradeModalInitial
 }
 
 interface FormState {
@@ -48,7 +60,7 @@ const EMPTY: FormState = {
   executedAt: today(),
 }
 
-export function TradeModal({ open, onClose }: Props) {
+export function TradeModal({ open, onClose, initial }: Props) {
   injectOnce('ia-modal', MODAL_CSS)
 
   const bump = usePortfolioStore((s) => s.bump)
@@ -68,7 +80,7 @@ export function TradeModal({ open, onClose }: Props) {
 
   useEffect(() => {
     if (!open) return
-    setForm({ ...EMPTY, executedAt: today() })
+    setForm({ ...EMPTY, executedAt: today(), ...initial })
     setError('')
     setRateDate('')
     setPriceLoaded(false)
@@ -78,9 +90,10 @@ export function TradeModal({ open, onClose }: Props) {
     getAccounts()
       .then((list) => {
         setAccounts(list)
-        if (list.length > 0) setForm((f) => ({ ...f, accountId: list[0].id }))
+        if (list.length > 0 && !initial?.accountId) setForm((f) => ({ ...f, accountId: list[0].id }))
       })
       .catch(() => setAccounts([]))
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open])
 
   // Подтягиваем актуальный курс ЦБ при выборе не-рублёвой валюты
