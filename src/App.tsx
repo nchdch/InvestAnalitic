@@ -14,6 +14,7 @@ import { RebalancePage } from './pages/RebalancePage'
 import { CalendarPage } from './pages/CalendarPage'
 import { TradeHistoryPage } from './pages/TradeHistoryPage'
 import { AnalyticsPage } from './pages/AnalyticsPage'
+import { ProfilePage } from './pages/ProfilePage'
 import { TradeModal } from './components/portfolio/TradeModal'
 import { PortfolioModal } from './components/portfolio/PortfolioModal'
 import { DepositModal } from './components/portfolio/DepositModal'
@@ -65,6 +66,7 @@ function AppLayout() {
         {page === 'calendar' && <CalendarPage />}
         {page === 'trades' && <TradeHistoryPage />}
         {page === 'analytics' && <AnalyticsPage />}
+        {page === 'profile' && <ProfilePage />}
       </AppShell>
       <TradeModal open={tradeOpen} onClose={() => setTradeOpen(false)} />
       <PortfolioModal open={portfolioOpen} onClose={() => setPortfolioOpen(false)} />

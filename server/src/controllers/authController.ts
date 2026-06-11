@@ -1,6 +1,7 @@
 import type { Request, Response } from 'express'
 import * as authService from '../services/authService.js'
 import { pool } from '../db/pool.js'
+import type { AuthRequest } from '../middleware/auth.js'
 
 const COOKIE_OPTS = {
   httpOnly: true,
@@ -105,6 +106,19 @@ export async function resetPassword(req: Request, res: Response): Promise<void> 
     res.json({ ok: true })
   } catch (err) {
     res.status(400).json({ error: err instanceof Error ? err.message : 'Ошибка сброса пароля' })
+  }
+}
+
+export async function changePassword(req: AuthRequest, res: Response): Promise<void> {
+  try {
+    const { currentPassword, newPassword } = req.body as { currentPassword?: string; newPassword?: string }
+    if (!currentPassword || !newPassword) { res.status(400).json({ error: 'currentPassword и newPassword обязательны' }); return }
+    if (newPassword.length < 8) { res.status(400).json({ error: 'Пароль должен быть не менее 8 символов' }); return }
+
+    await authService.changePassword(req.userId!, currentPassword, newPassword)
+    res.json({ ok: true })
+  } catch (err) {
+    res.status(400).json({ error: err instanceof Error ? err.message : 'Ошибка смены пароля' })
   }
 }
 

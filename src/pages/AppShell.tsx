@@ -30,7 +30,7 @@ const NAV_ITEMS: NavItem[] = [
   { id: 'analytics', label: 'Аналитика',      Icon: PieChart },
 ]
 
-export type PageId = 'dashboard' | 'assistant' | 'rebalance' | 'calendar' | 'trades' | 'analytics'
+export type PageId = 'dashboard' | 'assistant' | 'rebalance' | 'calendar' | 'trades' | 'analytics' | 'profile'
 
 interface Props {
   page: PageId
@@ -49,6 +49,7 @@ const PAGE_TITLE: Record<PageId, { title: string; sub: string }> = {
   calendar:   { title: 'Выплаты',       sub: 'Дивиденды и купоны' },
   trades:     { title: 'История сделок', sub: 'Все операции по портфелям' },
   analytics:  { title: 'Аналитика',     sub: 'Качество портфеля и доходность' },
+  profile:    { title: 'Личный кабинет', sub: 'Профиль, безопасность и настройки ассистента' },
 }
 
 export function AppShell({ page, onNav, onAddTrade, onAddPortfolio, onAddDeposit, onImportTrades, children }: Props) {
@@ -199,8 +200,13 @@ export function AppShell({ page, onNav, onAddTrade, onAddPortfolio, onAddDeposit
         </div>
 
         <div className="ia-sidebar__user">
-          <Avatar name={displayName} shape="circle" size="sm" color="var(--ink-600)" />
-          <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{displayName}</span>
+          <button
+            className="ia-sidebar__userlink"
+            onClick={() => { onNav('profile'); setMobileNavOpen(false) }}
+          >
+            <Avatar name={displayName} shape="circle" size="sm" color="var(--ink-600)" />
+            <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{displayName}</span>
+          </button>
           <IconButton
             label={theme === 'dark' ? 'Светлая тема' : 'Тёмная тема'}
             size="sm"

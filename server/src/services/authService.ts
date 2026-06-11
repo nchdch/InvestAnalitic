@@ -140,6 +140,20 @@ export async function resetPassword(token: string, newPassword: string): Promise
   await pool.query('UPDATE auth_tokens SET used_at = now() WHERE token = $1', [token])
 }
 
+export async function changePassword(userId: string, currentPassword: string, newPassword: string): Promise<void> {
+  const { rows } = await pool.query('SELECT password_hash FROM users WHERE id = $1', [userId])
+  if (!rows.length) throw new Error('Пользователь не найден')
+
+  const row = rows[0] as { password_hash: string | null }
+  if (!row.password_hash) throw new Error('Этот аккаунт использует вход через Google — пароль не задан')
+
+  const valid = await bcrypt.compare(currentPassword, row.password_hash)
+  if (!valid) throw new Error('Неверный текущий пароль')
+
+  const hash = await bcrypt.hash(newPassword, 12)
+  await pool.query('UPDATE users SET password_hash = $1, updated_at = now() WHERE id = $2', [hash, userId])
+}
+
 export function verifyAccessToken(token: string): { sub: string; email: string } {
   return jwt.verify(token, JWT_SECRET) as { sub: string; email: string }
 }

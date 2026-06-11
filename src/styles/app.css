@@ -53,6 +53,13 @@
 .ia-acctmini__pnl--down { color: var(--pnl-down); }
 .ia-sidebar__user { margin-top: auto; display: flex; align-items: center; gap: 6px; padding: 8px; border-top: 1px solid var(--divider); font-size: var(--text-sm); color: var(--text-1); font-weight: var(--fw-medium); }
 .ia-sidebar__user span { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ia-sidebar__userlink {
+  display: flex; align-items: center; gap: 10px; flex: 1; min-width: 0;
+  border: 0; background: transparent; cursor: pointer; padding: 4px; border-radius: var(--radius-md);
+  font-family: inherit; font-size: inherit; color: inherit; font-weight: inherit; text-align: left;
+  transition: background var(--dur-fast) var(--ease-out);
+}
+.ia-sidebar__userlink:hover { background: var(--surface-sunken); }
 
 /* ---- Org switcher ---- */
 .ia-org-switch {
@@ -232,6 +239,23 @@
 .ia-perfchip.is-up .ia-perfchip__pct { color: var(--pnl-up); }
 .ia-perfchip.is-down .ia-perfchip__pct { color: var(--pnl-down); }
 .ia-asset-accounts { grid-column: 1 / -1; padding-top: 18px; border-top: 1px solid var(--divider); margin-top: 4px; }
+
+/* ---- Profile ---- */
+.ia-profile-head { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+.ia-profile-head__info { flex: 1; min-width: 160px; }
+.ia-profile-head__name { font-size: var(--text-h3); font-weight: var(--fw-bold); color: var(--text-1); }
+.ia-profile-head__email { font-size: var(--text-sm); color: var(--text-3); margin-top: 2px; }
+.ia-profile-form { display: flex; flex-direction: column; gap: 14px; max-width: 360px; }
+.ia-profile-msg { display: flex; align-items: center; gap: 6px; font-size: var(--text-sm); }
+.ia-profile-msg--err { color: var(--negative); }
+.ia-profile-msg--ok { color: var(--positive); }
+.ia-profile-section { padding: 14px 0; border-bottom: 1px solid var(--divider); }
+.ia-profile-section:first-child { padding-top: 0; }
+.ia-profile-section:last-child { padding-bottom: 0; border-bottom: 0; }
+.ia-profile-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.ia-profile-row__title { font-size: var(--text-base); font-weight: var(--fw-medium); color: var(--text-1); }
+.ia-profile-row__sub { font-size: var(--text-xs); color: var(--text-3); margin-top: 2px; }
+.ia-profile-thresholds { display: flex; flex-direction: column; gap: 14px; }
 
 @media (max-width: 1080px) {
   .ia-grid-top, .ia-grid-reb, .ia-asset-main, .ia-an-top { grid-template-columns: 1fr; }
