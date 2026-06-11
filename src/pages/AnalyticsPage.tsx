@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Layers, TrendingUp, CalendarClock, Banknote, PieChart, Wallet, Activity, Percent, Target } from 'lucide-react'
-import { Card, StatCard, Badge, PnLValue, BarChart, DonutChart, Select } from '../components'
+import { Layers, TrendingUp, CalendarClock, Banknote, PieChart, Wallet, Activity, Percent, Target, Coins } from 'lucide-react'
+import { Card, StatCard, Badge, PnLValue, BarChart, DonutChart, Select, Input } from '../components'
 import { usePortfolio } from '../hooks/usePortfolio'
 import { useAnalytics, ANALYTICS_FILTERS_DEFAULT } from '../hooks/useAnalytics'
-import type { AnalyticsFilters } from '../hooks/useAnalytics'
+import type { AnalyticsFilters, PortfolioPositionRow } from '../hooks/useAnalytics'
 import { formatRub } from '../utils/format'
 import type { AssetType } from '@/types'
 
@@ -50,6 +50,12 @@ export function AnalyticsPage() {
   const [filters, setFilters] = useState<AnalyticsFilters>(ANALYTICS_FILTERS_DEFAULT)
   const a = useAnalytics(accounts, filters)
   const loading = portfolioLoading || a.isLoading
+
+  // Сценарный анализ «что если»
+  const [rateDeltaInput, setRateDeltaInput] = useState('-2')
+  const [fxDeltaInput, setFxDeltaInput] = useState('20')
+  const [shockKey, setShockKey] = useState<string | null>(null)
+  const [shockPctInput, setShockPctInput] = useState('-15')
 
   const accountOptions = useMemo(() => [
     { value: 'all', label: 'Все портфели' },
@@ -101,6 +107,30 @@ export function AnalyticsPage() {
       { value: m.coupons, color: 'var(--violet-500)' },
     ],
   }))
+
+  const currencyChartData = a.currencyExposure.map((c) => ({ label: c.currency, value: c.value, weight: c.weight, color: c.color }))
+
+  // Сценарий 1: изменение ключевой ставки → переоценка облигаций по дюрации (ΔP/P ≈ -D × Δy)
+  const rateDelta = Number(rateDeltaInput) || 0
+  const bondPriceChangePercent = a.bondDurationYears != null ? -a.bondDurationYears * rateDelta : null
+  const bondValueChange = bondPriceChangePercent != null ? a.bondValue * (bondPriceChangePercent / 100) : null
+  const totalAfterRate = a.totalValue + (bondValueChange ?? 0)
+
+  // Сценарий 2: ослабление/укрепление рубля → переоценка валютных позиций и остатков
+  const fxDelta = Number(fxDeltaInput) || 0
+  const fxValueChange = a.foreignCurrencyValue * (fxDelta / 100)
+  const totalAfterFx = a.totalValue + fxValueChange
+
+  // Сценарий 3: шок цены отдельной бумаги
+  const positionKey = (p: PortfolioPositionRow) => `${p.ticker}__${p.accountName}`
+  const fallbackShockKey = a.positions[0] ? positionKey(a.positions[0]) : ''
+  const shockPosition = a.positions.find((p) => positionKey(p) === (shockKey ?? fallbackShockKey)) ?? a.positions[0] ?? null
+  const effectiveShockKey = shockPosition ? positionKey(shockPosition) : fallbackShockKey
+  const shockPct = Number(shockPctInput) || 0
+  const shockValueChange = shockPosition ? shockPosition.currentValue * (shockPct / 100) : 0
+  const totalAfterShock = a.totalValue + shockValueChange
+  const shockWeightBefore = shockPosition && a.totalValue > 0 ? (shockPosition.currentValue / a.totalValue) * 100 : null
+  const shockWeightAfter = shockPosition && totalAfterShock > 0 ? ((shockPosition.currentValue + shockValueChange) / totalAfterShock) * 100 : null
 
   return (
     <div className="ia-screen">
@@ -209,7 +239,111 @@ export function AnalyticsPage() {
             caption={`Дивиденды + купоны: ${formatRub(a.trailingIncome)}`}
           />
         </Card>
+        <Card>
+          <StatCard
+            label="Форвардная доходность облигаций"
+            value={a.forwardBondYield != null ? PCT2.format(a.forwardBondYield) : '—'}
+            unit={a.forwardBondYield != null ? '%' : undefined}
+            icon={<Coins size={15} />}
+            caption={a.forwardBondCoupon > 0 ? `Купонами в год: ${formatRub(a.forwardBondCoupon)}` : 'Облигаций в портфеле нет'}
+          />
+        </Card>
       </div>
+
+      <div className="ia-grid-top">
+        <Card title="Валютная структура портфеля" subtitle="Позиции и денежные остатки в рублёвом эквиваленте">
+          {currencyChartData.length === 0 ? <Empty text="Нет данных для расчёта" /> : (
+            <>
+              <DonutChart data={currencyChartData} />
+              {a.foreignCurrencyValue > 0 && (
+                <div style={{ marginTop: 14, fontSize: 'var(--text-sm)', color: 'var(--text-3)' }}>
+                  В иностранной валюте: <strong style={{ color: 'var(--text-1)' }}>{formatRub(a.foreignCurrencyValue)}</strong>
+                  {' '}({a.totalValue > 0 ? PCT2.format((a.foreignCurrencyValue / a.totalValue) * 100) : '0,00'}% портфеля)
+                </div>
+              )}
+            </>
+          )}
+        </Card>
+
+        <Card title="Сценарии: ставка и курс" subtitle="Гипотетическая переоценка портфеля">
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 22 }}>
+            <div>
+              <Input
+                label="Изменение ключевой ставки"
+                type="number"
+                step="0.5"
+                value={rateDeltaInput}
+                onChange={(e) => setRateDeltaInput(e.target.value)}
+                suffix="п.п."
+              />
+              {a.bondDurationYears != null ? (
+                <div style={{ marginTop: 8, fontSize: 'var(--text-sm)', color: 'var(--text-3)' }}>
+                  Облигации (дюрация ≈ {YEARS1.format(a.bondDurationYears)} г.):{' '}
+                  <PnLValue value={bondValueChange ?? 0} percent={bondPriceChangePercent} display="both" size="sm" />
+                  {' '}→ портфель {formatRub(totalAfterRate)}
+                </div>
+              ) : (
+                <div style={{ marginTop: 8, fontSize: 'var(--text-sm)', color: 'var(--text-3)' }}>Облигаций в портфеле нет</div>
+              )}
+            </div>
+
+            <div>
+              <Input
+                label="Изменение курса ₽ к иностранным валютам"
+                type="number"
+                step="1"
+                value={fxDeltaInput}
+                onChange={(e) => setFxDeltaInput(e.target.value)}
+                suffix="%"
+                hint="Положительное значение — рубль слабеет"
+              />
+              {a.foreignCurrencyValue > 0 ? (
+                <div style={{ marginTop: 8, fontSize: 'var(--text-sm)', color: 'var(--text-3)' }}>
+                  Валютная позиция {formatRub(a.foreignCurrencyValue)}:{' '}
+                  <PnLValue value={fxValueChange} percent={a.totalValue > 0 ? (fxValueChange / a.totalValue) * 100 : null} display="both" size="sm" />
+                  {' '}→ портфель {formatRub(totalAfterFx)}
+                </div>
+              ) : (
+                <div style={{ marginTop: 8, fontSize: 'var(--text-sm)', color: 'var(--text-3)' }}>Весь портфель в рублях</div>
+              )}
+            </div>
+          </div>
+        </Card>
+      </div>
+
+      <Card title="Сценарий: изменение цены бумаги" subtitle="Влияние на P&L позиции и её вес в портфеле">
+        {a.positions.length === 0 ? <Empty text="Нет позиций для расчёта" /> : (
+          <>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, maxWidth: 480 }}>
+              <Select
+                label="Бумага"
+                value={effectiveShockKey}
+                onChange={(e) => setShockKey(e.target.value)}
+                options={a.positions.map((p) => ({ value: positionKey(p), label: `${p.ticker} · ${p.accountName}` }))}
+              />
+              <Input
+                label="Изменение цены"
+                type="number"
+                step="1"
+                value={shockPctInput}
+                onChange={(e) => setShockPctInput(e.target.value)}
+                suffix="%"
+              />
+            </div>
+            {shockPosition && (
+              <div style={{ marginTop: 12, fontSize: 'var(--text-sm)', color: 'var(--text-3)' }}>
+                {shockPosition.ticker}: {formatRub(shockPosition.currentValue)} → {formatRub(shockPosition.currentValue + shockValueChange)}
+                {' '}(<PnLValue value={shockValueChange} percent={shockPct} display="both" size="sm" />)
+                <br />
+                Доля в портфеле: {shockWeightBefore != null ? PCT2.format(shockWeightBefore) : '—'}%
+                {' '}→ {shockWeightAfter != null ? PCT2.format(shockWeightAfter) : '—'}%
+                <br />
+                Портфель целиком: {formatRub(a.totalValue)} → {formatRub(totalAfterShock)}
+              </div>
+            )}
+          </>
+        )}
+      </Card>
 
       <Card title="Дивиденды и купоны по месяцам" subtitle="Поступления к зачислению за последние 12 месяцев">
         <BarChart data={chartData} />

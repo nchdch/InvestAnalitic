@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import type { AccountSummary, AssetType, Payment } from '@/types'
+import type { AccountSummary, AssetType, Currency, Payment } from '@/types'
 import { getPayments } from '../api/client'
 
 export interface MonthlyIncomePoint {
@@ -15,6 +15,7 @@ export interface PortfolioPositionRow {
   name?: string
   assetType: AssetType
   accountName: string
+  currency: Currency
   currentValue: number
   portfolioWeight: number
   unrealizedPnl: number
@@ -23,6 +24,14 @@ export interface PortfolioPositionRow {
 
 export interface CompositionSlice {
   label: string
+  value: number
+  weight: number
+  color: string
+}
+
+/** Доля портфеля (включая денежные остатки) в одной валюте — для оценки валютного риска. */
+export interface CurrencyExposureSlice {
+  currency: string
   value: number
   weight: number
   color: string
@@ -44,7 +53,13 @@ export interface UseAnalyticsResult {
   hhiLevel: 'low' | 'moderate' | 'high' | null
   weightedYtm: number | null
   weightedDaysToMaturity: number | null
+  /** Дюрация облигационной части в годах (упрощённо — средневзвешенный срок до погашения). */
+  bondDurationYears: number | null
   bondValue: number
+  /** Ожидаемый годовой купонный доход облигаций по текущим ставкам и ценам, ₽. */
+  forwardBondCoupon: number
+  /** Форвардная доходность облигационной части — годовой купон к текущей стоимости, %. */
+  forwardBondYield: number | null
   monthlyIncome: MonthlyIncomePoint[]
   trailingIncome: number
   trailingYield: number | null
@@ -52,7 +67,25 @@ export interface UseAnalyticsResult {
   topGainers: PortfolioPositionRow[]
   topLosers: PortfolioPositionRow[]
   composition: CompositionSlice[]
+  /** Все позиции в выборке (для сценарного калькулятора). */
+  positions: PortfolioPositionRow[]
+  /** Денежные остатки выбранных счетов в рублёвом эквиваленте. */
+  cashValue: number
+  /** Стоимость позиций + денежные остатки выбранных счетов, ₽. */
+  totalValue: number
+  /** Структура портфеля по валютам (включая кэш), для оценки валютного риска. */
+  currencyExposure: CurrencyExposureSlice[]
+  /** Суммарная стоимость позиций и остатков в иностранной валюте, ₽. */
+  foreignCurrencyValue: number
 }
+
+const CURRENCY_COLORS: Record<string, string> = {
+  RUB: 'var(--azure-500)',
+  USD: 'var(--gain-500)',
+  EUR: 'var(--violet-500)',
+  CNY: 'var(--amber-500)',
+}
+const CURRENCY_FALLBACK_COLOR = 'var(--azure-300)'
 
 const MONTH_LABELS = ['Янв', 'Фев', 'Мар', 'Апр', 'Май', 'Июн', 'Июл', 'Авг', 'Сен', 'Окт', 'Ноя', 'Дек']
 
@@ -109,6 +142,7 @@ export function useAnalytics(accounts: AccountSummary[], filters: AnalyticsFilte
       name: r.position.name,
       assetType: 'equity',
       accountName: a.name,
+      currency: r.position.currency,
       currentValue: r.currentValue,
       portfolioWeight: 0,
       unrealizedPnl: r.unrealizedPnl,
@@ -119,6 +153,7 @@ export function useAnalytics(accounts: AccountSummary[], filters: AnalyticsFilte
       name: r.position.name,
       assetType: 'bond',
       accountName: a.name,
+      currency: r.position.currency,
       currentValue: r.currentValue,
       portfolioWeight: 0,
       unrealizedPnl: r.unrealizedPnl,
@@ -155,6 +190,42 @@ export function useAnalytics(accounts: AccountSummary[], filters: AnalyticsFilte
   const weightedDaysToMaturity = bondValue > 0 && maturityRows.length > 0
     ? maturityRows.reduce((s, r) => s + (r.daysToMaturity as number) * r.currentValue, 0) / bondValue
     : null
+  const bondDurationYears = weightedDaysToMaturity != null ? weightedDaysToMaturity / 365.25 : null
+
+  // Форвардный купонный доход: годовой купон по текущей купонной ставке к текущей цене каждой бумаги
+  const forwardBondCoupon = allBonds.reduce((s, r) => s + (r.currentYield != null ? (r.currentYield / 100) * r.currentValue : 0), 0)
+  const forwardBondYield = bondValue > 0 ? (forwardBondCoupon / bondValue) * 100 : null
+
+  // Валютная структура портфеля: позиции + денежные остатки выбранных счетов (без фильтра по типу актива/тикеру —
+  // это срез по риску всей выбранной части портфеля, а не только отфильтрованной таблицы)
+  const scenarioEquityRows = filteredAccounts.flatMap((a) => a.equityRows)
+  const scenarioBondRows = filteredAccounts.flatMap((a) => a.bondRows)
+  const scenarioCashRows = filteredAccounts.flatMap((a) => a.cashRows)
+
+  const scenarioPositionsValue = scenarioEquityRows.reduce((s, r) => s + r.currentValue, 0)
+    + scenarioBondRows.reduce((s, r) => s + r.currentValue, 0)
+  const cashValue = scenarioCashRows.reduce((s, r) => s + r.rubEquivalent, 0)
+  const totalValue = scenarioPositionsValue + cashValue
+
+  const currencyMap = new Map<string, number>()
+  for (const r of [...scenarioEquityRows, ...scenarioBondRows]) {
+    currencyMap.set(r.position.currency, (currencyMap.get(r.position.currency) ?? 0) + r.currentValue)
+  }
+  for (const r of scenarioCashRows) {
+    currencyMap.set(r.balance.currency, (currencyMap.get(r.balance.currency) ?? 0) + r.rubEquivalent)
+  }
+
+  const currencyExposure: CurrencyExposureSlice[] = Array.from(currencyMap.entries())
+    .filter(([, value]) => value > 0)
+    .sort((a, b) => b[1] - a[1])
+    .map(([currency, value]) => ({
+      currency,
+      value,
+      weight: totalValue > 0 ? (value / totalValue) * 100 : 0,
+      color: CURRENCY_COLORS[currency] ?? CURRENCY_FALLBACK_COLOR,
+    }))
+
+  const foreignCurrencyValue = totalValue - (currencyMap.get('RUB') ?? 0)
 
   const filteredAccountIds = new Set(filteredAccounts.map((a) => a.id))
   const relevantPayments = payments.filter((p) =>
@@ -220,9 +291,12 @@ export function useAnalytics(accounts: AccountSummary[], filters: AnalyticsFilte
     positionsCount: positions.length,
     positionsValue,
     hhi, hhiLevel,
-    weightedYtm, weightedDaysToMaturity, bondValue,
+    weightedYtm, weightedDaysToMaturity, bondDurationYears, bondValue,
+    forwardBondCoupon, forwardBondYield,
     monthlyIncome, trailingIncome, trailingYield,
     topPositions, topGainers, topLosers,
     composition,
+    positions, cashValue, totalValue,
+    currencyExposure, foreignCurrencyValue,
   }
 }
