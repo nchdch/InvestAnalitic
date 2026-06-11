@@ -36,7 +36,7 @@ export async function getPayment(id: string) {
 export interface CreatePaymentInput {
   accountId: string
   ticker: string
-  type: 'dividend' | 'coupon'
+  type: 'dividend' | 'coupon' | 'amortization' | 'redemption'
   paymentDate?: string
   grossAmount: number
   taxWithheld?: number

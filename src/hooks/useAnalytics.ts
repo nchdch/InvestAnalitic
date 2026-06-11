@@ -158,6 +158,7 @@ export function useAnalytics(accounts: AccountSummary[], filters: AnalyticsFilte
 
   const filteredAccountIds = new Set(filteredAccounts.map((a) => a.id))
   const relevantPayments = payments.filter((p) =>
+    (p.type === 'dividend' || p.type === 'coupon') &&
     filteredAccountIds.has(p.accountId) &&
     tickerMatches(p.ticker) &&
     (filters.assetType === 'all' || (filters.assetType === 'equity' ? p.type === 'dividend' : p.type === 'coupon'))

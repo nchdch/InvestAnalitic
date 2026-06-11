@@ -1,6 +1,6 @@
 import type { Currency, IsoDate } from './common'
 
-export type PaymentType = 'dividend' | 'coupon'
+export type PaymentType = 'dividend' | 'coupon' | 'amortization' | 'redemption'
 
 /** Выплата дивидендов или купона — см. CLAUDE.md «Дивиденды и купоны». */
 export interface Payment {

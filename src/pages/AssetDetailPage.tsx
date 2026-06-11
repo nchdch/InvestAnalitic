@@ -4,9 +4,16 @@ import { Card, Avatar, Badge, PnLValue, Tabs, PriceChart } from '../components'
 import { useAssetDetail } from '../hooks/useAssetDetail'
 import { getTickerLogoUrl } from '../utils/logos'
 import { formatRub, formatPercent, formatPrice } from '../utils/format'
-import type { AccountSummary } from '@/types'
+import type { AccountSummary, PaymentType } from '@/types'
 
 const NUM0 = new Intl.NumberFormat('ru-RU')
+
+const PAYMENT_TYPE_LABEL: Record<PaymentType, string> = {
+  dividend: 'Дивиденд',
+  coupon: 'Купон',
+  amortization: 'Амортизация',
+  redemption: 'Погашение',
+}
 
 const RANGES = [
   { label: '10 дн', days: 10 },
@@ -225,7 +232,7 @@ export function AssetDetailPage({ ticker, accounts, onBack }: Props) {
                     {data.payments.map((p) => (
                       <tr key={p.id}>
                         <td>{new Date(p.paymentDate).toLocaleDateString('ru-RU')}</td>
-                        <td>{p.type === 'dividend' ? 'Дивиденд' : 'Купон'}</td>
+                        <td>{PAYMENT_TYPE_LABEL[p.type]}</td>
                         <td className="r ia-num">{formatPrice(p.grossAmount, p.currency)}</td>
                         <td className="r ia-num">{formatPrice(p.taxWithheld, p.currency)}</td>
                         <td className="r ia-num" style={{ color: 'var(--text-1)', fontWeight: 600 }}>{formatPrice(p.netAmount, p.currency)}</td>

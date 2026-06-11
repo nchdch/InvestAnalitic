@@ -5,6 +5,7 @@ import { usePortfolio } from '../hooks/usePortfolio'
 import { useCalendar } from '../hooks/useCalendar'
 import type { UpcomingPaymentType } from '../hooks/useCalendar'
 import { formatRub, formatPrice } from '../utils/format'
+import type { PaymentType } from '@/types'
 
 const PCT2 = new Intl.NumberFormat('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 
@@ -15,6 +16,20 @@ const TYPE_LABEL: Record<UpcomingPaymentType, string> = {
 }
 
 const TYPE_TONE: Record<UpcomingPaymentType, BadgeTone> = {
+  coupon: 'neutral',
+  amortization: 'accent',
+  redemption: 'warning',
+}
+
+const HISTORY_TYPE_LABEL: Record<PaymentType, string> = {
+  dividend: '💰 Дивиденд',
+  coupon: '🧾 Купон',
+  amortization: '📉 Амортизация',
+  redemption: '🏁 Погашение',
+}
+
+const HISTORY_TYPE_TONE: Record<PaymentType, BadgeTone> = {
+  dividend: 'accent',
   coupon: 'neutral',
   amortization: 'accent',
   redemption: 'warning',
@@ -140,14 +155,14 @@ export function CalendarPage() {
                   </td>
                   <td>
                     <div className="ia-cell-tk">
-                      <Avatar name={p.ticker} size="sm" color={p.type === 'coupon' ? 'var(--ink-600)' : undefined} />
+                      <Avatar name={p.ticker} size="sm" color={p.type !== 'dividend' ? 'var(--ink-600)' : undefined} />
                       <div className="ia-cell-tk__t ia-mono">{p.ticker}</div>
                     </div>
                   </td>
                   <td style={{ color: 'var(--text-3)', fontSize: 'var(--text-xs)' }}>{p.accountName}</td>
                   <td>
-                    <Badge tone={p.type === 'dividend' ? 'accent' : 'neutral'} size="sm">
-                      {p.type === 'dividend' ? '💰 Дивиденд' : '🧾 Купон'}
+                    <Badge tone={HISTORY_TYPE_TONE[p.type]} size="sm">
+                      {HISTORY_TYPE_LABEL[p.type]}
                     </Badge>
                   </td>
                   <td className="r ia-num">{formatPrice(p.grossAmount, p.currency)}</td>
