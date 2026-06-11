@@ -36,12 +36,12 @@ function toRow(r: Record<string, unknown>) {
   }
 }
 
-export async function listPositions(accountId?: string) {
-  const q = accountId
-    ? 'SELECT * FROM positions WHERE account_id = $1 ORDER BY created_at'
-    : 'SELECT * FROM positions ORDER BY account_id, created_at'
-  const params = accountId ? [accountId] : []
-  const { rows } = await pool.query(q, params)
+export async function listPositions(accountIds: string[]) {
+  if (accountIds.length === 0) return []
+  const { rows } = await pool.query(
+    'SELECT * FROM positions WHERE account_id = ANY($1) ORDER BY account_id, created_at',
+    [accountIds]
+  )
   return rows.map(toRow)
 }
 

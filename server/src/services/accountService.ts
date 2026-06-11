@@ -40,3 +40,18 @@ export async function deleteAccount(id: string) {
   const { rowCount } = await pool.query('DELETE FROM accounts WHERE id = $1', [id])
   return (rowCount ?? 0) > 0
 }
+
+/**
+ * ID счетов, доступных пользователю: его собственные счета (user_id), счета организаций,
+ * в которых он состоит активным участником, и счета без владельца (созданные до появления user_id —
+ * остаются доступными всем авторизованным пользователям, чтобы не потерять доступ к старым данным).
+ */
+export async function getAccessibleAccountIds(userId: string): Promise<string[]> {
+  const { rows } = await pool.query<{ id: string }>(
+    `SELECT DISTINCT a.id FROM accounts a
+     LEFT JOIN org_memberships m ON m.org_id = a.org_id AND m.status = 'active' AND m.user_id = $1
+     WHERE a.user_id = $1 OR a.user_id IS NULL OR m.id IS NOT NULL`,
+    [userId]
+  )
+  return rows.map((r) => r.id)
+}

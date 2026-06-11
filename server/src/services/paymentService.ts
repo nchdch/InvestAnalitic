@@ -15,10 +15,10 @@ function toRow(r: Record<string, unknown>) {
   }
 }
 
-export async function listPayments(accountId?: string, year?: number) {
-  let q = 'SELECT * FROM payments WHERE 1=1'
-  const params: unknown[] = []
-  if (accountId) { params.push(accountId); q += ` AND account_id = $${params.length}` }
+export async function listPayments(accountIds: string[], year?: number) {
+  if (accountIds.length === 0) return []
+  let q = 'SELECT * FROM payments WHERE account_id = ANY($1)'
+  const params: unknown[] = [accountIds]
   if (year) {
     params.push(`${year}-01-01`); params.push(`${year}-12-31`)
     q += ` AND payment_date BETWEEN $${params.length - 1} AND $${params.length}`
@@ -66,16 +66,17 @@ export async function deletePayment(id: string) {
   return (rowCount ?? 0) > 0
 }
 
-export async function getPaymentStats(accountId?: string) {
-  let q = `SELECT
-    SUM(gross_amount) AS total_gross,
-    SUM(net_amount) AS total_net,
-    SUM(tax_withheld) AS total_tax,
-    COUNT(*) AS count
-  FROM payments WHERE 1=1`
-  const params: unknown[] = []
-  if (accountId) { params.push(accountId); q += ` AND account_id = $${params.length}` }
-  const { rows } = await pool.query(q, params)
+export async function getPaymentStats(accountIds: string[]) {
+  if (accountIds.length === 0) return { totalGross: 0, totalNet: 0, totalTax: 0, count: 0 }
+  const { rows } = await pool.query(
+    `SELECT
+      SUM(gross_amount) AS total_gross,
+      SUM(net_amount) AS total_net,
+      SUM(tax_withheld) AS total_tax,
+      COUNT(*) AS count
+    FROM payments WHERE account_id = ANY($1)`,
+    [accountIds]
+  )
   const r = rows[0]
   return {
     totalGross: Number(r.total_gross ?? 0),

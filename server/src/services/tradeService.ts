@@ -16,10 +16,10 @@ function toRow(r: Record<string, unknown>) {
   }
 }
 
-export async function listTrades(accountId?: string, ticker?: string) {
-  let q = 'SELECT * FROM trades WHERE 1=1'
-  const params: unknown[] = []
-  if (accountId) { params.push(accountId); q += ` AND account_id = $${params.length}` }
+export async function listTrades(accountIds: string[], ticker?: string) {
+  if (accountIds.length === 0) return []
+  let q = 'SELECT * FROM trades WHERE account_id = ANY($1)'
+  const params: unknown[] = [accountIds]
   if (ticker) { params.push(ticker); q += ` AND ticker = $${params.length}` }
   q += ' ORDER BY executed_at DESC'
   const { rows } = await pool.query(q, params)
