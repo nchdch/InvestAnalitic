@@ -3,10 +3,12 @@ import { Card, StatCard, PnLValue, Badge, AllocationBar, Avatar, Sparkline, Tabs
 import { Sparkles, Download, PackageOpen, ChevronDown, ChevronRight } from 'lucide-react'
 import { usePortfolio } from '../hooks/usePortfolio'
 import { usePortfolioStore } from '../store/portfolioStore'
+import { usePositionTrades } from '../hooks/usePositionTrades'
 import { getPriceHistory } from '../api/client'
 import { getTickerLogoUrl } from '../utils/logos'
+import { formatPrice, formatDuration } from '../utils/format'
 import { AssetDetailPage } from './AssetDetailPage'
-import type { AccountSummary } from '@/types'
+import type { AccountSummary, EquityRow, BondRow } from '@/types'
 
 const RUB = new Intl.NumberFormat('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 const NUM0 = new Intl.NumberFormat('ru-RU')
@@ -338,6 +340,246 @@ function AllAssetsTable({ accounts }: { accounts: AccountSummary[] }) {
   )
 }
 
+// ─── Раскрывающиеся строки: акции и облигации ──────────────────────────────────
+
+function RowToggle({ open, onClick }: { open: boolean; onClick: (e: React.MouseEvent) => void }) {
+  return (
+    <button
+      type="button"
+      className="ia-row-toggle"
+      onClick={(e) => { e.stopPropagation(); onClick(e) }}
+      aria-label={open ? 'Свернуть детали' : 'Показать детали'}
+    >
+      {open ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+    </button>
+  )
+}
+
+function DetailStat({ label, value }: { label: string; value: React.ReactNode }) {
+  return (
+    <div className="ia-stat-row">
+      <span className="ia-stat-row__label">{label}</span>
+      <span className="ia-stat-row__value">{value}</span>
+    </div>
+  )
+}
+
+function TradeHistoryStats({ accountId, ticker, currency }: { accountId: string; ticker: string; currency: string }) {
+  const { stats, isLoading } = usePositionTrades(accountId, ticker, true)
+  if (isLoading || !stats) return <DetailStat label="Загрузка…" value="" />
+  return (
+    <>
+      <DetailStat label="Дата первой сделки" value={stats.firstTradeDate ? new Date(stats.firstTradeDate).toLocaleDateString('ru-RU') : '—'} />
+      <DetailStat label="Срок инвестирования" value={stats.firstTradeDate ? formatDuration(stats.firstTradeDate) : '—'} />
+      <DetailStat label="Стоимость покупок" value={<span className="ia-num">{formatPrice(stats.totalBought, currency)}</span>} />
+      <DetailStat label="Стоимость продаж" value={<span className="ia-num">{formatPrice(stats.totalSold, currency)}</span>} />
+    </>
+  )
+}
+
+function EquityDetailPanel({ row, sparkline }: { row: EquityRow; sparkline: number[] }) {
+  const { position } = row
+  return (
+    <div className="ia-row-detail__inner">
+      <div className="ia-row-detail__group">
+        <div className="ia-row-detail__title">Бумага</div>
+        <DetailStat label="Тикер" value={<span className="ia-mono">{position.ticker}</span>} />
+        <DetailStat label="ISIN" value={<span className="ia-mono">{position.isin ?? '—'}</span>} />
+        <DetailStat label="Биржа" value={position.exchange} />
+        <DetailStat label="Метод учёта" value={position.averagingMethod} />
+      </div>
+      <div className="ia-row-detail__group">
+        <div className="ia-row-detail__title">Объём и цена</div>
+        <DetailStat label="Всего акций" value={<span className="ia-num">{NUM0.format(position.quantity)}</span>} />
+        <DetailStat label="Средняя цена" value={<span className="ia-num">{formatPrice(position.averagePrice, position.currency)}</span>} />
+        <DetailStat label="Текущая цена" value={<span className="ia-num">{formatPrice(row.currentPrice, position.currency)}</span>} />
+        <DetailStat label="Инвестировано" value={<span className="ia-num">{money(row.investedValue)}</span>} />
+      </div>
+      <div className="ia-row-detail__group">
+        <div className="ia-row-detail__title">История сделок</div>
+        <TradeHistoryStats accountId={position.accountId} ticker={position.ticker} currency={position.currency} />
+      </div>
+      <div className="ia-row-detail__group">
+        <div className="ia-row-detail__title">Динамика цены</div>
+        <Sparkline data={sparkline} />
+      </div>
+    </div>
+  )
+}
+
+function EquityTableRow({ row, expanded, onToggle, onSelectTicker, sparkline }: {
+  row: EquityRow
+  expanded: boolean
+  onToggle: () => void
+  onSelectTicker: (ticker: string) => void
+  sparkline: number[]
+}) {
+  const { position } = row
+  return (
+    <React.Fragment>
+      <tr style={{ cursor: 'pointer' }} onClick={() => onSelectTicker(position.ticker)}>
+        <td style={{ width: 36 }}><RowToggle open={expanded} onClick={onToggle} /></td>
+        <td>
+          <div className="ia-cell-tk">
+            <Avatar name={position.ticker} src={getTickerLogoUrl(position.ticker, 'equity')} size="sm" />
+            <div>
+              <div className="ia-cell-tk__t ia-mono">{position.ticker}</div>
+              <div className="ia-cell-tk__n">{position.name ?? position.ticker}</div>
+            </div>
+          </div>
+        </td>
+        <td className="r ia-num">{NUM0.format(position.quantity)}</td>
+        <td className="r ia-num">{RUB.format(row.currentPrice)}</td>
+        <td className="r ia-num" style={{ color: 'var(--text-1)', fontWeight: 600 }}>{money(row.currentValue)}</td>
+        <td className="r">
+          {row.unrealizedPnl !== 0
+            ? <PnLValue value={row.unrealizedPnl} percent={row.unrealizedPnlPercent} display="both" size="sm" />
+            : <span style={{ color: 'var(--text-4)', fontSize: 'var(--text-xs)' }}>нет цены</span>}
+        </td>
+        <td className="r">
+          {row.dayChange != null
+            ? <PnLValue value={row.dayChange} percent={row.dayChangePercent ?? undefined} display="both" size="sm" />
+            : <span style={{ color: 'var(--text-4)', fontSize: 'var(--text-xs)' }}>—</span>}
+        </td>
+        <td className="r ia-num" style={{ color: 'var(--text-3)' }}>{row.portfolioWeight.toFixed(1)}%</td>
+      </tr>
+      {expanded && (
+        <tr className="ia-row-detail">
+          <td colSpan={8}><EquityDetailPanel row={row} sparkline={sparkline} /></td>
+        </tr>
+      )}
+    </React.Fragment>
+  )
+}
+
+function BondDetailPanel({ row, sparkline }: { row: BondRow; sparkline: number[] }) {
+  const { position } = row
+  return (
+    <div className="ia-row-detail__inner">
+      <div className="ia-row-detail__group">
+        <div className="ia-row-detail__title">Выпуск</div>
+        <DetailStat label="Тикер" value={<span className="ia-mono">{position.ticker}</span>} />
+        <DetailStat label="ISIN" value={<span className="ia-mono">{position.isin ?? '—'}</span>} />
+        <DetailStat label="Биржа" value={position.exchange} />
+        <DetailStat
+          label="Номинал"
+          value={
+            <span className="ia-num">
+              {formatPrice(position.faceValue, position.currency)}
+              {position.initialFaceValue != null && position.initialFaceValue !== position.faceValue
+                ? ` из ${formatPrice(position.initialFaceValue, position.currency)}`
+                : ''}
+            </span>
+          }
+        />
+        <DetailStat label="Лот, шт." value={<span className="ia-num">{position.lotSize ?? '—'}</span>} />
+      </div>
+      <div className="ia-row-detail__group">
+        <div className="ia-row-detail__title">Купон</div>
+        <DetailStat label="Ставка" value={<span className="ia-num">{position.couponRate.toFixed(2)}%</span>} />
+        <DetailStat label="НКД на бумагу" value={<span className="ia-num">{position.currentAccruedInterest != null ? formatPrice(position.currentAccruedInterest, position.currency) : '—'}</span>} />
+        <DetailStat
+          label="Ближайшая выплата"
+          value={position.nextCouponDate
+            ? <>{new Date(position.nextCouponDate).toLocaleDateString('ru-RU')} · <span className="ia-num">{formatPrice(position.nextCouponValue ?? 0, position.currency)}</span></>
+            : '—'}
+        />
+        <DetailStat label="Получено купонов" value={<span className="ia-num">{row.couponIncome > 0 ? money(row.couponIncome) : '—'}</span>} />
+      </div>
+      <div className="ia-row-detail__group">
+        <div className="ia-row-detail__title">Доходность и погашение</div>
+        <DetailStat label="Текущая доходность" value={<span className="ia-num">{row.currentYield != null ? `${row.currentYield.toFixed(2)}%` : '—'}</span>} />
+        <DetailStat label="YTM" value={<span className="ia-num">{row.ytm != null ? `${row.ytm.toFixed(2)}%` : '—'}</span>} />
+        <DetailStat label="Дата погашения" value={position.maturityDate ? new Date(position.maturityDate).toLocaleDateString('ru-RU') : '—'} />
+        <DetailStat label="Дней до погашения" value={<span className="ia-num">{row.daysToMaturity ?? '—'}</span>} />
+        {position.offerDate && <DetailStat label="Оферта" value={new Date(position.offerDate).toLocaleDateString('ru-RU')} />}
+      </div>
+      <div className="ia-row-detail__group">
+        <div className="ia-row-detail__title">История сделок</div>
+        <TradeHistoryStats accountId={position.accountId} ticker={position.ticker} currency={position.currency} />
+      </div>
+      {position.amortization && position.amortization.length > 0 && (
+        <div className="ia-row-detail__group ia-row-detail__full">
+          <div className="ia-row-detail__title">График амортизации и погашения</div>
+          <table className="ia-table ia-table--compact">
+            <thead>
+              <tr>
+                <th>Дата</th>
+                <th className="r">% от номинала</th>
+                <th className="r">На бумагу</th>
+                <th className="r">По позиции</th>
+              </tr>
+            </thead>
+            <tbody>
+              {position.amortization.map((ev) => (
+                <tr key={ev.date}>
+                  <td>
+                    {new Date(ev.date).toLocaleDateString('ru-RU')}
+                    {ev.date === position.maturityDate && <Badge tone="warning" size="sm" style={{ marginLeft: 8 }}>Погашение</Badge>}
+                  </td>
+                  <td className="r ia-num">{ev.valuePrc.toFixed(2)}%</td>
+                  <td className="r ia-num">{formatPrice(ev.value, position.currency)}</td>
+                  <td className="r ia-num">{formatPrice(ev.value * position.quantity, position.currency)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+      <div className="ia-row-detail__group">
+        <div className="ia-row-detail__title">Динамика цены</div>
+        <Sparkline data={sparkline} />
+      </div>
+    </div>
+  )
+}
+
+function BondTableRow({ row, expanded, onToggle, sparkline }: {
+  row: BondRow
+  expanded: boolean
+  onToggle: () => void
+  sparkline: number[]
+}) {
+  const { position } = row
+  return (
+    <React.Fragment>
+      <tr style={{ cursor: 'pointer' }} onClick={onToggle}>
+        <td style={{ width: 36 }}><RowToggle open={expanded} onClick={onToggle} /></td>
+        <td>
+          <div className="ia-cell-tk">
+            <Avatar name={position.ticker} size="sm" color="var(--ink-600)" />
+            <div>
+              <div className="ia-cell-tk__t ia-mono">{position.ticker}</div>
+              <div className="ia-cell-tk__n">{position.name ?? position.ticker}</div>
+            </div>
+          </div>
+        </td>
+        <td className="r ia-num">{NUM0.format(position.quantity)}</td>
+        <td className="r ia-num" style={{ color: 'var(--text-1)', fontWeight: 600 }}>{money(row.currentValue)}</td>
+        <td className="r">
+          {row.totalPnl !== 0
+            ? <PnLValue value={row.totalPnl} percent={row.totalPnlPercent} display="both" size="sm" />
+            : <span style={{ color: 'var(--text-4)', fontSize: 'var(--text-xs)' }}>нет цены</span>}
+        </td>
+        <td className="r">
+          {row.ytm != null
+            ? <Badge tone="positive" size="sm">{row.ytm.toFixed(1)}%</Badge>
+            : <span>—</span>}
+        </td>
+        <td className="ia-num" style={{ color: 'var(--text-3)' }}>
+          {position.maturityDate ? new Date(position.maturityDate).toLocaleDateString('ru-RU') : '—'}
+        </td>
+        <td className="r ia-num" style={{ color: 'var(--text-3)' }}>{row.portfolioWeight.toFixed(1)}%</td>
+      </tr>
+      {expanded && (
+        <tr className="ia-row-detail">
+          <td colSpan={8}><BondDetailPanel row={row} sparkline={sparkline} /></td>
+        </tr>
+      )}
+    </React.Fragment>
+  )
+}
+
 // ─── Главная страница ─────────────────────────────────────────────────────────
 
 export function PortfolioPage() {
@@ -347,7 +589,17 @@ export function PortfolioPage() {
   const setSelectedAccountId = usePortfolioStore((s) => s.setSelectedAccountId)
   const [priceHistory, setPriceHistory] = useState<Record<string, number[]>>({})
   const [selectedTicker, setSelectedTicker] = useState<string | null>(null)
+  const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set())
   const fetchedTickersRef = useRef<Set<string>>(new Set())
+
+  function toggleRow(id: string) {
+    setExpandedRows((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
 
   useEffect(() => {
     if (isLoading) return
@@ -537,52 +789,26 @@ export function PortfolioPage() {
             : <table className="ia-table">
                 <thead>
                   <tr>
+                    <th style={{ width: 36 }}></th>
                     <th>Акция</th>
-                    <th className="r">Изм. за день, %</th>
                     <th className="r">Кол-во</th>
-                    <th className="r">Ср. цена, ₽</th>
                     <th className="r">Тек. цена, ₽</th>
                     <th className="r">Тек. стоимость, ₽</th>
-                    <th className="r">Прибыль, ₽</th>
-                    <th className="r">Прибыль, %</th>
+                    <th className="r">Прибыль</th>
+                    <th className="r">Изм. за день</th>
                     <th className="r">Доля</th>
-                    <th>Динамика</th>
                   </tr>
                 </thead>
                 <tbody>
                   {allEquities.map((row) => (
-                    <tr key={row.position.id} style={{ cursor: 'pointer' }} onClick={() => setSelectedTicker(row.position.ticker)}>
-                      <td>
-                        <div className="ia-cell-tk">
-                          <Avatar name={row.position.ticker} src={getTickerLogoUrl(row.position.ticker, 'equity')} size="sm" />
-                          <div>
-                            <div className="ia-cell-tk__t ia-mono">{row.position.ticker}</div>
-                            <div className="ia-cell-tk__n">{row.position.name ?? row.position.ticker}</div>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="r">
-                        {row.dayChangePercent != null
-                          ? <PnLValue percent={row.dayChangePercent} display="percent" size="sm" />
-                          : <span style={{ color: 'var(--text-4)', fontSize: 'var(--text-xs)' }}>—</span>}
-                      </td>
-                      <td className="r ia-num">{NUM0.format(row.position.quantity)}</td>
-                      <td className="r ia-num">{RUB.format(row.position.averagePrice)}</td>
-                      <td className="r ia-num">{RUB.format(row.currentPrice)}</td>
-                      <td className="r ia-num" style={{ color: 'var(--text-1)', fontWeight: 600 }}>{money(row.currentValue)}</td>
-                      <td className="r">
-                        {row.unrealizedPnl !== 0
-                          ? <PnLValue value={row.unrealizedPnl} display="money" size="sm" />
-                          : <span style={{ color: 'var(--text-4)', fontSize: 'var(--text-xs)' }}>нет цены</span>}
-                      </td>
-                      <td className="r">
-                        {row.unrealizedPnl !== 0
-                          ? <PnLValue percent={row.unrealizedPnlPercent} display="percent" size="sm" />
-                          : <span style={{ color: 'var(--text-4)' }}>—</span>}
-                      </td>
-                      <td className="r ia-num" style={{ color: 'var(--text-3)' }}>{row.portfolioWeight.toFixed(1)}%</td>
-                      <td><Sparkline data={priceHistory[row.position.ticker] ?? []} /></td>
-                    </tr>
+                    <EquityTableRow
+                      key={row.position.id}
+                      row={row}
+                      expanded={expandedRows.has(row.position.id)}
+                      onToggle={() => toggleRow(row.position.id)}
+                      onSelectTicker={setSelectedTicker}
+                      sparkline={priceHistory[row.position.ticker] ?? []}
+                    />
                   ))}
                 </tbody>
               </table>
@@ -595,64 +821,25 @@ export function PortfolioPage() {
             : <table className="ia-table ia-table--compact">
                 <thead>
                   <tr>
+                    <th style={{ width: 36 }}></th>
                     <th>Выпуск</th>
                     <th className="r">Кол-во</th>
                     <th className="r">Тек. стоимость</th>
-                    <th className="r">Прибыль</th>
-                    <th className="r">Купон %</th>
-                    <th className="r">Куп. доходность</th>
-                    <th className="r">Прибыль от купонов</th>
                     <th className="r">Сум. прибыль</th>
                     <th className="r">YTM</th>
                     <th>Погашение</th>
                     <th className="r">Доля</th>
-                    <th>Динамика</th>
                   </tr>
                 </thead>
                 <tbody>
                   {allBonds.map((row) => (
-                    <tr key={row.position.id}>
-                      <td>
-                        <div className="ia-cell-tk">
-                          <Avatar name={row.position.ticker} size="sm" color="var(--ink-600)" />
-                          <div>
-                            <div className="ia-cell-tk__t ia-mono">{row.position.ticker}</div>
-                            <div className="ia-cell-tk__n">{row.position.name ?? row.position.ticker}</div>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="r ia-num">{NUM0.format(row.position.quantity)}</td>
-                      <td className="r ia-num" style={{ color: 'var(--text-1)', fontWeight: 600 }}>{money(row.currentValue)}</td>
-                      <td className="r">
-                        {row.unrealizedPnl !== 0
-                          ? <PnLValue value={row.unrealizedPnl} percent={row.unrealizedPnlPercent} display="both" size="sm" />
-                          : <span style={{ color: 'var(--text-4)', fontSize: 'var(--text-xs)' }}>нет цены</span>}
-                      </td>
-                      <td className="r ia-num">{row.position.couponRate != null ? row.position.couponRate.toFixed(2) + '%' : '—'}</td>
-                      <td className="r ia-num">{row.currentYield != null ? row.currentYield.toFixed(2) + '%' : '—'}</td>
-                      <td className="r">
-                        {row.couponIncome > 0
-                          ? <span className="ia-num" style={{ color: 'var(--gain-600)' }}>{money(row.couponIncome)}</span>
-                          : <span style={{ color: 'var(--text-4)' }}>—</span>}
-                      </td>
-                      <td className="r">
-                        {row.totalPnl !== 0
-                          ? <PnLValue value={row.totalPnl} percent={row.totalPnlPercent} display="both" size="sm" />
-                          : <span style={{ color: 'var(--text-4)', fontSize: 'var(--text-xs)' }}>нет цены</span>}
-                      </td>
-                      <td className="r">
-                        {row.ytm != null
-                          ? <Badge tone="positive" size="sm">{row.ytm.toFixed(1)}%</Badge>
-                          : <span>—</span>}
-                      </td>
-                      <td className="ia-num" style={{ color: 'var(--text-3)' }}>
-                        {row.position.maturityDate
-                          ? new Date(row.position.maturityDate).toLocaleDateString('ru-RU')
-                          : '—'}
-                      </td>
-                      <td className="r ia-num" style={{ color: 'var(--text-3)' }}>{row.portfolioWeight.toFixed(1)}%</td>
-                      <td><Sparkline data={priceHistory[row.position.ticker] ?? []} /></td>
-                    </tr>
+                    <BondTableRow
+                      key={row.position.id}
+                      row={row}
+                      expanded={expandedRows.has(row.position.id)}
+                      onToggle={() => toggleRow(row.position.id)}
+                      sparkline={priceHistory[row.position.ticker] ?? []}
+                    />
                   ))}
                 </tbody>
               </table>
