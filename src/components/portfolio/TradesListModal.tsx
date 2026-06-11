@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { X, Trash2 } from 'lucide-react'
 import { Button, Badge } from '../index'
 import { injectOnce } from '../_internal/style'
