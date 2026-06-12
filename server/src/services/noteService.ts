@@ -10,6 +10,11 @@ function toRow(r: Record<string, unknown>) {
   }
 }
 
+export async function getNote(id: string) {
+  const { rows } = await pool.query('SELECT * FROM position_notes WHERE id = $1', [id])
+  return rows[0] ? toRow(rows[0]) : null
+}
+
 export async function listNotes(positionId: string) {
   const { rows } = await pool.query(
     'SELECT * FROM position_notes WHERE position_id = $1 ORDER BY created_at DESC',
