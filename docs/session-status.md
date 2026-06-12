@@ -8,7 +8,7 @@
 - **VM:** `10.3.0.47`, пользователь `vrtadmin`, проект в `/home/vrtadmin/investanalitic`
 - **Стек:** `docker-compose.prod.yml` — `postgres` (16-alpine, persistent volume), `backend`
   (Express, порт 4000 внутри сети), `frontend` (nginx, порт 80 опубликован на хосте)
-- **Текущий коммит на проде:** `919ed69` (= `origin/main`)
+- **Текущий коммит на проде:** `3aeec07` (= `origin/main`)
 - **Health-check:** `curl http://localhost/api/health` → `{"status":"ok","db":"connected"}`
 - **Миграции** применяются автоматически при старте backend-контейнера (`entrypoint.sh`
   вызывает `node-pg-migrate up` перед запуском сервера) — отдельный ручной запуск не нужен.
@@ -61,9 +61,9 @@ host key не закэширован в реестре PuTTY текущего п
    проверяется активное членство (`isOrgMember`, `org_memberships.status = 'active'`),
    при отсутствии доступа — `403`; если `orgId` не передан — используется
    `getAccessibleAccountIds(userId)`. `listAccounts`/`getPortfolioSummary`/`refreshPrices`
-   теперь принимают `accountIds: string[]` вместо одиночного `orgId`. Не закоммичено и не
-   задеплоено — нужно проверить ручным ревью (typecheck/build недоступны локально, см. п.3)
-   перед пушем.
+   теперь принимают `accountIds: string[]` вместо одиночного `orgId`. Закоммичено
+   (`3aeec07`), запушено и задеплоено — `tsc -p tsconfig.json` прошёл без ошибок при
+   прод-сборке, health-check OK.
 
 2. **`accounts.user_id IS NULL`** — счета, созданные до появления колонки `user_id`, сейчас
    доступны ВСЕМ авторизованным пользователям (fallback в `getAccessibleAccountIds`, чтобы
