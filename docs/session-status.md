@@ -54,13 +54,16 @@ host key не закэширован в реестре PuTTY текущего п
 
 ## 3. Известные проблемы / TODO для следующей сессии
 
-1. **`orgId` query-параметр не валидируется** в `accountController`/`portfolioController`
-   (`/api/accounts?orgId=...`, `/api/portfolio/summary?orgId=...`) — принимается от клиента
-   без проверки, что пользователь действительно состоит в этой организации
-   (`org_memberships`). Потенциальный IDOR: любой аутентифицированный пользователь может
-   подставить чужой `orgId` и увидеть счета/портфель другой организации. Нужно валидировать
-   так же, как сделано в `getAccessibleAccountIds`. **Не исправлено, пользователю пока не
-   сообщено отдельно — найдено как побочный результат security-фикса из п.2 раздела 2.**
+1. ~~**`orgId` query-параметр не валидируется**~~ — **исправлено.** `accountController`
+   (`list`/`get`/`create`/`update`/`remove`) и `portfolioController` (`summary`/
+   `refreshPrices`) теперь резолвят список доступных `accountIds` через новую функцию
+   `resolveAccountIds(userId, orgId?)` в `accountService.ts`: если `orgId` передан,
+   проверяется активное членство (`isOrgMember`, `org_memberships.status = 'active'`),
+   при отсутствии доступа — `403`; если `orgId` не передан — используется
+   `getAccessibleAccountIds(userId)`. `listAccounts`/`getPortfolioSummary`/`refreshPrices`
+   теперь принимают `accountIds: string[]` вместо одиночного `orgId`. Не закоммичено и не
+   задеплоено — нужно проверить ручным ревью (typecheck/build недоступны локально, см. п.3)
+   перед пушем.
 
 2. **`accounts.user_id IS NULL`** — счета, созданные до появления колонки `user_id`, сейчас
    доступны ВСЕМ авторизованным пользователям (fallback в `getAccessibleAccountIds`, чтобы

@@ -1,14 +1,11 @@
 import { pool } from '../db/pool.js'
 
-export async function listAccounts(orgId?: string) {
-  const { rows } = orgId
-    ? await pool.query(
-        'SELECT id, name, broker, created_at AS "createdAt" FROM accounts WHERE org_id = $1 ORDER BY created_at',
-        [orgId]
-      )
-    : await pool.query(
-        'SELECT id, name, broker, created_at AS "createdAt" FROM accounts ORDER BY created_at'
-      )
+export async function listAccounts(accountIds: string[]) {
+  if (accountIds.length === 0) return []
+  const { rows } = await pool.query(
+    'SELECT id, name, broker, created_at AS "createdAt" FROM accounts WHERE id = ANY($1) ORDER BY created_at',
+    [accountIds]
+  )
   return rows
 }
 
@@ -54,4 +51,31 @@ export async function getAccessibleAccountIds(userId: string): Promise<string[]>
     [userId]
   )
   return rows.map((r) => r.id)
+}
+
+/** Проверяет, состоит ли пользователь в организации как активный участник. */
+export async function isOrgMember(userId: string, orgId: string): Promise<boolean> {
+  const { rows } = await pool.query(
+    `SELECT 1 FROM org_memberships WHERE org_id = $1 AND user_id = $2 AND status = 'active'`,
+    [orgId, userId]
+  )
+  return rows.length > 0
+}
+
+export async function getAccountIdsByOrg(orgId: string): Promise<string[]> {
+  const { rows } = await pool.query<{ id: string }>('SELECT id FROM accounts WHERE org_id = $1', [orgId])
+  return rows.map((r) => r.id)
+}
+
+/**
+ * Резолвит список счетов, доступных пользователю, с учётом необязательного orgId из query.
+ * Если orgId передан, но пользователь не состоит в этой организации — возвращает null (нет доступа).
+ * Если orgId не передан — возвращает все доступные пользователю счета (getAccessibleAccountIds).
+ */
+export async function resolveAccountIds(userId: string, orgId?: string): Promise<string[] | null> {
+  if (orgId) {
+    if (!(await isOrgMember(userId, orgId))) return null
+    return getAccountIdsByOrg(orgId)
+  }
+  return getAccessibleAccountIds(userId)
 }

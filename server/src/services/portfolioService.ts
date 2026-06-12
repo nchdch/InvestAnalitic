@@ -70,13 +70,15 @@ function daysTo(dateStr: string): number | null {
   }
 }
 
-export async function getPortfolioSummary(orgId?: string) {
-  const { rows: accounts } = orgId
-    ? await pool.query<DbAccount>(
-        'SELECT id, name, broker FROM accounts WHERE org_id = $1 ORDER BY created_at',
-        [orgId]
-      )
-    : await pool.query<DbAccount>('SELECT id, name, broker FROM accounts ORDER BY created_at')
+export async function getPortfolioSummary(accountIds: string[]) {
+  let accounts: DbAccount[] = []
+  if (accountIds.length > 0) {
+    const result = await pool.query<DbAccount>(
+      'SELECT id, name, broker FROM accounts WHERE id = ANY($1) ORDER BY created_at',
+      [accountIds]
+    )
+    accounts = result.rows
+  }
 
   if (accounts.length === 0) {
     return {
@@ -358,14 +360,9 @@ export async function getPortfolioSummary(orgId?: string) {
 }
 
 /** Подтягивает текущие котировки с MOEX (для российских бумаг) и Finnhub (для иностранных акций) и обновляет last_price у позиций портфеля. */
-export async function refreshPrices(orgId?: string) {
-  const { rows: accounts } = orgId
-    ? await pool.query<{ id: string }>('SELECT id FROM accounts WHERE org_id = $1', [orgId])
-    : await pool.query<{ id: string }>('SELECT id FROM accounts')
+export async function refreshPrices(accountIds: string[]) {
+  if (accountIds.length === 0) return { updated: 0, failed: 0, total: 0 }
 
-  if (accounts.length === 0) return { updated: 0, failed: 0, total: 0 }
-
-  const accountIds = accounts.map((a) => a.id)
   const { rows: positions } = await pool.query<{ id: string; ticker: string; asset_type: string; exchange: string }>(
     `SELECT id, ticker, asset_type, exchange FROM positions WHERE account_id = ANY($1) AND quantity > 0`,
     [accountIds]
