@@ -1,9 +1,11 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Layers, TrendingUp, CalendarClock, Banknote, PieChart, Wallet, Activity, Percent, Target, Coins } from 'lucide-react'
+import { Layers, TrendingUp, TrendingDown, CalendarClock, Banknote, PieChart, Wallet, Activity, Percent, Target, Coins, Receipt, Landmark } from 'lucide-react'
 import { Card, StatCard, Badge, PnLValue, BarChart, DonutChart, Select, Input } from '../components'
 import { usePortfolio } from '../hooks/usePortfolio'
 import { useAnalytics, ANALYTICS_FILTERS_DEFAULT } from '../hooks/useAnalytics'
 import type { AnalyticsFilters, PortfolioPositionRow } from '../hooks/useAnalytics'
+import { useRealizedPnl } from '../hooks/useRealizedPnl'
+import { useBenchmark } from '../hooks/useBenchmark'
 import { formatRub } from '../utils/format'
 import type { AssetType } from '@/types'
 
@@ -49,6 +51,9 @@ export function AnalyticsPage() {
   const { filteredSummary, filteredAccounts, isLoading: portfolioLoading } = usePortfolio()
   const [filters, setFilters] = useState<AnalyticsFilters>(ANALYTICS_FILTERS_DEFAULT)
   const a = useAnalytics(filteredAccounts, filters)
+  const realized = useRealizedPnl(filteredAccounts)
+  const [benchmarkDays, setBenchmarkDays] = useState(90)
+  const benchmark = useBenchmark(filteredAccounts, benchmarkDays)
   const loading = portfolioLoading || a.isLoading
 
   // Сценарный анализ «что если»
@@ -202,9 +207,9 @@ export function AnalyticsPage() {
             />
             <StatCard
               label="Альфа портфеля"
-              value="—"
+              value={benchmark.portfolioAlpha != null ? <PnLValue percent={benchmark.portfolioAlpha} display="percent" size="lg" /> : '—'}
               icon={<Target size={15} />}
-              caption="Нет данных бенчмарка для расчёта"
+              caption={`За ${benchmark.days} дн. к IMOEX/RGBI`}
             />
           </div>
         </Card>
@@ -401,6 +406,234 @@ export function AnalyticsPage() {
       </Card>
 
       <div className="ia-grid-top">
+        <Card title={`Реализованный P&L за ${realized.year} год`} subtitle="FIFO по истории сделок · курсы конвертации текущие">
+          {realized.isLoading ? <Spinner /> : realized.lots.length === 0 ? (
+            <Empty text={`В ${realized.year} году закрытых позиций не было`} />
+          ) : (
+            <>
+              <div className="ia-an-quickstats">
+                <StatCard
+                  label="Прибыль от продаж"
+                  value={formatRub(realized.realizedGainsYTD)}
+                  icon={<TrendingUp size={15} />}
+                />
+                <StatCard
+                  label="Убыток от продаж"
+                  value={formatRub(realized.realizedLossesYTD)}
+                  icon={<TrendingDown size={15} />}
+                />
+                <StatCard
+                  label="Налоговая база"
+                  value={formatRub(realized.netTaxableBase)}
+                  icon={<Receipt size={15} />}
+                  caption="Прибыль за вычетом убытков по году"
+                />
+                <StatCard
+                  label="Налог к уплате"
+                  value={formatRub(realized.estimatedTax)}
+                  icon={<Landmark size={15} />}
+                  caption={`Ставка НДФЛ ${PCT2.format(realized.marginalRate * 100)}% · ориентировочно`}
+                />
+              </div>
+              <div style={{ marginTop: 16, maxHeight: 280, overflow: 'auto' }}>
+                <table className="ia-table">
+                  <thead>
+                    <tr>
+                      <th>Закрыто</th>
+                      <th>Инструмент</th>
+                      <th>Портфель</th>
+                      <th className="r">Кол-во</th>
+                      <th className="r">Выручка</th>
+                      <th className="r">Себестоимость</th>
+                      <th className="r">P&amp;L</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {realized.lots.map((l, i) => (
+                      <tr key={i}>
+                        <td className="ia-num" style={{ color: 'var(--text-2)' }}>{new Date(l.closeDate).toLocaleDateString('ru-RU')}</td>
+                        <td>
+                          <span className="ia-mono">{l.ticker}</span>
+                          {l.name && l.name !== l.ticker && <span className="ia-cell-tk__n" style={{ marginLeft: 6 }}>{l.name}</span>}
+                        </td>
+                        <td style={{ color: 'var(--text-3)', fontSize: 'var(--text-xs)' }}>{l.accountName}</td>
+                        <td className="r ia-num">{l.quantity}</td>
+                        <td className="r ia-num">{formatRub(l.proceeds)}</td>
+                        <td className="r ia-num">{formatRub(l.costBasis)}</td>
+                        <td className="r"><PnLValue value={l.pnl} percent={l.costBasis !== 0 ? (l.pnl / l.costBasis) * 100 : null} display="both" size="sm" /></td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          )}
+        </Card>
+
+        <Card title="Налоговая оптимизация" subtitle="Убыточные позиции — кандидаты на сальдирование">
+          {realized.isLoading ? <Spinner /> : realized.lossHarvestCandidates.length === 0 ? (
+            <Empty text="Убыточных позиций нет — нечего сальдировать с прибылью" />
+          ) : (
+            <>
+              <div style={{ display: 'flex', flexDirection: 'column' }}>
+                {realized.lossHarvestCandidates.map((c, i) => (
+                  <div key={i} className="ia-stat-row">
+                    <span className="ia-stat-row__label">
+                      <span className="ia-mono" style={{ fontWeight: 600, color: 'var(--text-1)' }}>{c.ticker}</span>
+                      <span style={{ color: 'var(--text-3)', marginLeft: 6, fontSize: 'var(--text-xs)' }}>{c.accountName}</span>
+                    </span>
+                    <span style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+                      <span className="ia-num" style={{ color: 'var(--negative)' }}>{formatRub(c.unrealizedPnl)}</span>
+                      <Badge tone="positive" size="sm">−{formatRub(c.potentialTaxSaving)} НДФЛ</Badge>
+                    </span>
+                  </div>
+                ))}
+              </div>
+              <div className="ia-note">
+                <span style={{ color: 'var(--text-3)', fontSize: 14 }}>ℹ</span>
+                <span>
+                  Если зафиксировать эти убытки до конца налогового года, налоговая база уменьшится,
+                  а налог к уплате может снизиться ориентировочно на {formatRub(realized.potentialTaxSavingTotal)}.
+                  Не индивидуальная инвестиционная рекомендация — оцените целесообразность продажи каждой позиции отдельно.
+                </span>
+              </div>
+            </>
+          )}
+        </Card>
+      </div>
+
+      <div className="ia-grid-top">
+        <Card
+          title="Сравнение с бенчмарком"
+          subtitle="IMOEX — для акций, RGBI — для облигаций"
+          actions={
+            <Select
+              size="sm"
+              value={String(benchmarkDays)}
+              onChange={(e) => setBenchmarkDays(Number(e.target.value))}
+              options={[
+                { value: '30', label: '30 дней' },
+                { value: '90', label: '90 дней' },
+                { value: '180', label: '180 дней' },
+                { value: '365', label: '365 дней' },
+              ]}
+            />
+          }
+        >
+          {benchmark.isLoading ? <Spinner /> : benchmark.positions.length === 0 ? (
+            <Empty text="Нет позиций для сравнения" />
+          ) : (
+            <>
+              <div className="ia-an-quickstats">
+                <StatCard
+                  label="IMOEX"
+                  value={benchmark.imoexReturn != null ? <PnLValue percent={benchmark.imoexReturn} display="percent" size="lg" /> : '—'}
+                  icon={<TrendingUp size={15} />}
+                  caption={`Индекс МосБиржи за ${benchmark.days} дн.`}
+                />
+                <StatCard
+                  label="RGBI"
+                  value={benchmark.rgbiReturn != null ? <PnLValue percent={benchmark.rgbiReturn} display="percent" size="lg" /> : '—'}
+                  icon={<TrendingUp size={15} />}
+                  caption={`Индекс гос. облигаций за ${benchmark.days} дн.`}
+                />
+                <StatCard
+                  label="Альфа портфеля"
+                  value={benchmark.portfolioAlpha != null ? <PnLValue percent={benchmark.portfolioAlpha} display="percent" size="lg" /> : '—'}
+                  icon={<Target size={15} />}
+                  caption="Средневзв. по позициям с данными истории"
+                />
+              </div>
+              <div style={{ marginTop: 16, maxHeight: 280, overflow: 'auto' }}>
+                <table className="ia-table">
+                  <thead>
+                    <tr>
+                      <th>Инструмент</th>
+                      <th>Портфель</th>
+                      <th className="r">Доходность</th>
+                      <th className="r">Бенчмарк</th>
+                      <th className="r">Альфа</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {benchmark.positions.map((p, i) => (
+                      <tr key={i}>
+                        <td>
+                          <span className="ia-mono">{p.ticker}</span>
+                          {p.name && p.name !== p.ticker && <span className="ia-cell-tk__n" style={{ marginLeft: 6 }}>{p.name}</span>}
+                        </td>
+                        <td style={{ color: 'var(--text-3)', fontSize: 'var(--text-xs)' }}>{p.accountName}</td>
+                        <td className="r ia-num">
+                          {p.positionReturn != null ? <PnLValue percent={p.positionReturn} display="percent" size="sm" /> : '—'}
+                        </td>
+                        <td className="r ia-num" style={{ color: 'var(--text-3)' }}>
+                          {p.benchmarkReturn != null ? `${p.benchmarkReturn >= 0 ? '+' : ''}${PCT2.format(p.benchmarkReturn)}%` : '—'}
+                        </td>
+                        <td className="r">
+                          {p.alpha != null ? <PnLValue percent={p.alpha} display="percent" size="sm" /> : '—'}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          )}
+        </Card>
+
+        <Card title="Опережают / отстают от индекса" subtitle="Альфа = доходность бумаги − доходность бенчмарка за период">
+          {benchmark.isLoading ? <Spinner /> : benchmark.positions.length === 0 ? (
+            <Empty text="Нет данных для сравнения" />
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+              <div>
+                <div className="ia-eyebrow" style={{ marginBottom: 6 }}>Опережают рынок</div>
+                {benchmark.outperformers.length === 0 ? (
+                  <div style={{ color: 'var(--text-3)', fontSize: 'var(--text-sm)' }}>Нет позиций с положительной альфой</div>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column' }}>
+                    {benchmark.outperformers.map((p, i) => (
+                      <div key={i} className="ia-stat-row">
+                        <span className="ia-stat-row__label">
+                          <span className="ia-mono" style={{ fontWeight: 600, color: 'var(--text-1)' }}>{p.ticker}</span>
+                          <span style={{ color: 'var(--text-3)', marginLeft: 6, fontSize: 'var(--text-xs)' }}>{p.accountName}</span>
+                        </span>
+                        <PnLValue percent={p.alpha} display="percent" size="sm" />
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <div>
+                <div className="ia-eyebrow" style={{ marginBottom: 6 }}>Отстают от рынка</div>
+                {benchmark.underperformers.length === 0 ? (
+                  <div style={{ color: 'var(--text-3)', fontSize: 'var(--text-sm)' }}>Нет позиций с отрицательной альфой</div>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column' }}>
+                    {benchmark.underperformers.map((p, i) => (
+                      <div key={i} className="ia-stat-row">
+                        <span className="ia-stat-row__label">
+                          <span className="ia-mono" style={{ fontWeight: 600, color: 'var(--text-1)' }}>{p.ticker}</span>
+                          <span style={{ color: 'var(--text-3)', marginLeft: 6, fontSize: 'var(--text-xs)' }}>{p.accountName}</span>
+                        </span>
+                        <PnLValue percent={p.alpha} display="percent" size="sm" />
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <div className="ia-note">
+                <span style={{ color: 'var(--text-3)', fontSize: 14 }}>ℹ</span>
+                <span>
+                  Доходность считается по изменению цены за период без учёта дивидендов и купонов. Не индивидуальная инвестиционная рекомендация.
+                </span>
+              </div>
+            </div>
+          )}
+        </Card>
+      </div>
+
+      <div className="ia-grid-top">
         <Card title="Лидеры роста">
           {a.topGainers.length === 0 ? <Empty text="Нет позиций с прибылью" /> : (
             <div style={{ display: 'flex', flexDirection: 'column' }}>
@@ -439,7 +672,6 @@ export function AnalyticsPage() {
           <li>P&amp;L за период (день / неделя / месяц / квартал / год) — нет исторических снимков портфеля</li>
           <li>Карта по секторам — по эмитентам секторы пока не размечены</li>
           <li>Топ движений рынка вне портфеля — нет источника котировок по всем бумагам биржи</li>
-          <li>Сравнение с бенчмарком (IMOEX, RGBI) и альфа портфеля — данные бенчмарка не загружены</li>
           <li>Форвардная дивидендная доходность — нет прогноза выплат на акцию</li>
         </ul>
       </Card>

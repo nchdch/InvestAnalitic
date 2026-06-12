@@ -152,6 +152,32 @@ export async function history(req: Request, res: Response): Promise<void> {
   }
 }
 
+/** Тикеры индексов-бенчмарков на индексном рынке MOEX (engine=stock, market=index). */
+const INDEX_TICKERS: Record<string, string> = {
+  IMOEX: 'IMOEX',
+  RGBI: 'RGBI',
+}
+
+export async function indexHistory(req: Request, res: Response): Promise<void> {
+  const indexParam = (req.query.index as string | undefined)?.trim().toUpperCase()
+  const daysParam = Number(req.query.days)
+  const days = Number.isFinite(daysParam) && daysParam > 0 ? daysParam : 30
+
+  const moexTicker = indexParam ? INDEX_TICKERS[indexParam] : undefined
+  if (!moexTicker) {
+    res.status(400).json({ error: 'index must be one of: ' + Object.keys(INDEX_TICKERS).join(', ') })
+    return
+  }
+
+  try {
+    const moex = await fetchPriceHistory(moexTicker, 'index', days)
+    res.json({ index: indexParam, dates: moex.dates, prices: moex.prices })
+  } catch (err) {
+    console.error('index history error:', err)
+    res.status(502).json({ error: 'Ошибка получения истории индекса' })
+  }
+}
+
 async function searchMoex(q: string): Promise<SecurityResult[]> {
   const url = `https://iss.moex.com/iss/securities.json?q=${encodeURIComponent(q)}&limit=20&iss.meta=off&is_trading=1`
   const upstream = await fetch(url, {

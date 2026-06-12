@@ -70,8 +70,9 @@ async function fetchHistoryFromEngine(engine: string, market: string, ticker: st
  * Источники истории цен в порядке проверки. Для акций дополнительно проверяется
  * рынок ОТС (иностранные бумаги с суффиксом "-RM" и т.п.), у которых нет истории
  * на основном рынке. Для валют используется биржевой курс с валютного рынка MOEX.
+ * Для индексов (IMOEX, RGBI) — индексный рынок securities/index.
  */
-const SOURCES: Record<'equity' | 'bond' | 'currency', { engine: string; market: string }[]> = {
+const SOURCES: Record<'equity' | 'bond' | 'currency' | 'index', { engine: string; market: string }[]> = {
   equity: [
     { engine: 'stock', market: 'shares' },
     { engine: 'otc', market: 'shares' },
@@ -79,11 +80,12 @@ const SOURCES: Record<'equity' | 'bond' | 'currency', { engine: string; market: 
   ],
   bond: [{ engine: 'stock', market: 'bonds' }],
   currency: [{ engine: 'currency', market: 'selt' }],
+  index: [{ engine: 'stock', market: 'index' }],
 }
 
 /** Дневные цены закрытия за указанный период (по умолчанию 30 дней, максимум 400). Кэш на час. */
 export async function fetchPriceHistory(
-  ticker: string, assetType: 'equity' | 'bond' | 'currency', days: number = DEFAULT_DAYS,
+  ticker: string, assetType: 'equity' | 'bond' | 'currency' | 'index', days: number = DEFAULT_DAYS,
 ): Promise<{ dates: string[]; prices: number[] }> {
   const clampedDays = Math.min(Math.max(Math.floor(days), 1), MAX_DAYS)
   const key = `${assetType}:${ticker}:${clampedDays}`

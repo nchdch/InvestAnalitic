@@ -186,6 +186,16 @@ export function getPriceHistory(ticker: string, assetType: 'equity' | 'bond' | '
   return request<PriceHistoryResult>(`/securities/history?ticker=${encodeURIComponent(ticker)}&assetType=${assetType}${d}`)
 }
 
+export interface IndexHistoryResult {
+  index: string
+  dates: string[]
+  prices: number[]
+}
+export function getIndexHistory(index: 'IMOEX' | 'RGBI', days?: number): Promise<IndexHistoryResult> {
+  const d = days ? `&days=${days}` : ''
+  return request<IndexHistoryResult>(`/securities/index-history?index=${index}${d}`)
+}
+
 export interface SecurityPriceResult {
   ticker: string
   price: number
