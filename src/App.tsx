@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from 'react'
 import { BrowserRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom'
-import { LandingPage } from './pages/LandingPage'
 import { AuthPage } from './pages/AuthPage'
 import { EmailVerifyPage } from './pages/EmailVerifyPage'
 import { GoogleCallbackPage } from './pages/GoogleCallbackPage'
@@ -83,6 +82,12 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   return <>{children}</>
 }
 
+function RootRedirect() {
+  const { user, isLoading } = useAuthStore()
+  if (isLoading) return <div className="ia-auth-wrap"><div style={{ color: 'var(--text-3)' }}>Загрузка…</div></div>
+  return <Navigate to={user ? '/app' : '/auth'} replace />
+}
+
 export function App() {
   const { setAuth, clearAuth, setLoading } = useAuthStore()
   const { setOrgs, setActiveOrg, clearOrgs, setLoading: setOrgLoading } = useOrgStore()
@@ -115,7 +120,7 @@ export function App() {
   return (
     <BrowserRouter>
       <Routes>
-        <Route path="/" element={<LandingPage onStart={() => window.location.href = '/auth'} />} />
+        <Route path="/" element={<RootRedirect />} />
         <Route path="/auth" element={<AuthPage />} />
         <Route path="/auth/verify" element={<EmailVerifyPage />} />
         <Route path="/auth/callback" element={<GoogleCallbackPage />} />
