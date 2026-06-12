@@ -181,7 +181,7 @@ function SummaryReportTable({ accounts, totalValue, onSelectTicker }: { accounts
   const R: React.CSSProperties = { textAlign: 'right', whiteSpace: 'nowrap' }
 
   return (
-    <table className="ia-table">
+    <table className="ia-table ia-table--compact">
       <thead>
         <tr>
           <th style={{ width: '30%' }}>Название</th>
@@ -396,7 +396,7 @@ function AllAssetsTable({ accounts, openModal, onDelete }: {
   }
 
   return (
-    <table className="ia-table">
+    <table className="ia-table ia-table--compact">
       <thead>
         <tr>
           <th>Тикер</th>
@@ -921,7 +921,7 @@ export function PortfolioPage() {
         {tab === 'eq' && (
           allEquities.length === 0
             ? <div style={{ padding: '32px', textAlign: 'center', color: 'var(--text-3)', fontSize: 'var(--text-sm)' }}>Акции не найдены</div>
-            : <table className="ia-table">
+            : <table className="ia-table ia-table--compact">
                 <thead>
                   <tr>
                     <th style={{ width: 36 }}></th>
@@ -990,7 +990,7 @@ export function PortfolioPage() {
         {tab === 'cash' && (
           allCash.length === 0
             ? <div style={{ padding: '32px', textAlign: 'center', color: 'var(--text-3)', fontSize: 'var(--text-sm)' }}>Денежные остатки не учтены</div>
-            : <table className="ia-table">
+            : <table className="ia-table ia-table--compact">
                 <thead>
                   <tr>
                     <th>Валюта</th>
