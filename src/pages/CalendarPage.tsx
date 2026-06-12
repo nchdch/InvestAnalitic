@@ -60,8 +60,8 @@ function Empty({ text }: { text: string }) {
 }
 
 export function CalendarPage() {
-  const { accounts, isLoading: portfolioLoading } = usePortfolio()
-  const cal = useCalendar(accounts)
+  const { filteredAccounts, isLoading: portfolioLoading } = usePortfolio()
+  const cal = useCalendar(filteredAccounts)
   const loading = portfolioLoading || cal.isLoading
 
   if (loading) return <div className="ia-screen"><Spinner /></div>

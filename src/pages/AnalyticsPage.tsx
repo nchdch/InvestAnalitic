@@ -46,9 +46,9 @@ function Empty({ text }: { text: string }) {
 }
 
 export function AnalyticsPage() {
-  const { summary, accounts, isLoading: portfolioLoading } = usePortfolio()
+  const { filteredSummary, filteredAccounts, isLoading: portfolioLoading } = usePortfolio()
   const [filters, setFilters] = useState<AnalyticsFilters>(ANALYTICS_FILTERS_DEFAULT)
-  const a = useAnalytics(accounts, filters)
+  const a = useAnalytics(filteredAccounts, filters)
   const loading = portfolioLoading || a.isLoading
 
   // Сценарный анализ «что если»
@@ -59,12 +59,19 @@ export function AnalyticsPage() {
 
   const accountOptions = useMemo(() => [
     { value: 'all', label: 'Все портфели' },
-    ...accounts.map((acc) => ({ value: acc.id, label: acc.name })),
-  ], [accounts])
+    ...filteredAccounts.map((acc) => ({ value: acc.id, label: acc.name })),
+  ], [filteredAccounts])
+
+  const accountOptionsKey = accountOptions.map((o) => o.value).join(',')
+  useEffect(() => {
+    if (filters.accountId !== 'all' && !accountOptionsKey.split(',').includes(filters.accountId)) {
+      setFilters((f) => ({ ...f, accountId: 'all' }))
+    }
+  }, [accountOptionsKey, filters.accountId])
 
   const accountsForTickers = filters.accountId === 'all'
-    ? accounts
-    : accounts.filter((acc) => acc.id === filters.accountId)
+    ? filteredAccounts
+    : filteredAccounts.filter((acc) => acc.id === filters.accountId)
 
   const tickerOptions = useMemo(() => {
     const set = new Set<string>()
@@ -82,20 +89,20 @@ export function AnalyticsPage() {
     }
   }, [tickerOptionsKey, filters.ticker])
 
-  const globalPositionsCount = accounts.reduce((s, acc) => s + acc.equityRows.length + acc.bondRows.length, 0)
+  const globalPositionsCount = filteredAccounts.reduce((s, acc) => s + acc.equityRows.length + acc.bondRows.length, 0)
 
   if (loading) return <div className="ia-screen"><Spinner /></div>
-  if (!summary || globalPositionsCount === 0) {
+  if (!filteredSummary || globalPositionsCount === 0) {
     return <div className="ia-screen"><Empty text="Недостаточно данных для аналитики — добавьте позиции в портфель, чтобы увидеть метрики качества." /></div>
   }
 
   const filtersActive = filters.accountId !== 'all' || filters.assetType !== 'all' || filters.ticker !== 'all'
-  const selectedAccount = filters.accountId === 'all' ? null : accounts.find((acc) => acc.id === filters.accountId) ?? null
+  const selectedAccount = filters.accountId === 'all' ? null : filteredAccounts.find((acc) => acc.id === filters.accountId) ?? null
 
-  const baseTotalValue = selectedAccount ? selectedAccount.totalValue : summary.totalValue
-  const baseDayChange = selectedAccount ? selectedAccount.dayChange : summary.dayChange
-  const baseUnrealizedPnl = selectedAccount ? selectedAccount.unrealizedPnl : summary.unrealizedPnl
-  const baseUnrealizedPnlPercent = selectedAccount ? selectedAccount.unrealizedPnlPercent : summary.unrealizedPnlPercent
+  const baseTotalValue = selectedAccount ? selectedAccount.totalValue : filteredSummary.totalValue
+  const baseDayChange = selectedAccount ? selectedAccount.dayChange : filteredSummary.dayChange
+  const baseUnrealizedPnl = selectedAccount ? selectedAccount.unrealizedPnl : filteredSummary.unrealizedPnl
+  const baseUnrealizedPnlPercent = selectedAccount ? selectedAccount.unrealizedPnlPercent : filteredSummary.unrealizedPnlPercent
 
   const prevValue = baseTotalValue - baseDayChange
   const dayChangePercent = prevValue !== 0 ? (baseDayChange / prevValue) * 100 : null

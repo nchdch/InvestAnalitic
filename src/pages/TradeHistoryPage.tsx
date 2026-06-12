@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { History as HistoryIcon } from 'lucide-react'
 import { Card, Badge, Select } from '../components'
 import { usePortfolio } from '../hooks/usePortfolio'
@@ -38,16 +38,23 @@ function Empty({ text }: { text: string }) {
 }
 
 export function TradeHistoryPage() {
-  const { accounts, isLoading: portfolioLoading } = usePortfolio()
-  const { rows, isLoading, error } = useTradeHistory(accounts)
+  const { filteredAccounts, isLoading: portfolioLoading } = usePortfolio()
+  const { rows, isLoading, error } = useTradeHistory(filteredAccounts)
 
   const [accountId, setAccountId] = useState('all')
   const [assetType, setAssetType] = useState('all')
 
   const accountOptions = useMemo(() => [
     { value: 'all', label: 'Все портфели' },
-    ...accounts.map((a) => ({ value: a.id, label: a.name })),
-  ], [accounts])
+    ...filteredAccounts.map((a) => ({ value: a.id, label: a.name })),
+  ], [filteredAccounts])
+
+  const accountOptionsKey = accountOptions.map((o) => o.value).join(',')
+  useEffect(() => {
+    if (accountId !== 'all' && !accountOptionsKey.split(',').includes(accountId)) {
+      setAccountId('all')
+    }
+  }, [accountOptionsKey, accountId])
 
   const filtered = rows.filter((r) =>
     (accountId === 'all' || r.accountId === accountId) &&
