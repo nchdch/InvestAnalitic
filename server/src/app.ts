@@ -1,5 +1,6 @@
 ﻿import cookieParser from 'cookie-parser'
 import cors from 'cors'
+import helmet from 'helmet'
 import express, { type ErrorRequestHandler } from 'express'
 import { healthRouter } from './routes/health.js'
 import { accountRouter } from './routes/accounts.js'
@@ -12,13 +13,19 @@ import { orgRouter } from './routes/orgs.js'
 import { securitiesRouter } from './routes/securities.js'
 import { cashRouter } from './routes/cash.js'
 import { noteRouter } from './routes/notes.js'
+import { apiLimiter } from './middleware/rateLimit.js'
 
 export function createApp() {
   const app = express()
 
+  // За nginx-реверс-прокси: req.ip берётся из X-Forwarded-For (важно для rate-limit по IP)
+  app.set('trust proxy', 1)
+
+  app.use(helmet({ contentSecurityPolicy: false }))
   app.use(cors({ origin: process.env.FRONTEND_URL ?? 'http://localhost:5173', credentials: true }))
   app.use(express.json())
   app.use(cookieParser())
+  app.use('/api', apiLimiter)
 
   app.use('/api/health', healthRouter)
   app.use('/api/auth', authRouter)
