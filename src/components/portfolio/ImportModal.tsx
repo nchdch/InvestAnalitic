@@ -3,44 +3,117 @@ import * as XLSX from 'xlsx'
 import { X, Upload, FileSpreadsheet, CheckCircle2, RotateCcw } from 'lucide-react'
 import { Button, Badge } from '../index'
 import { injectOnce } from '../_internal/style'
-import { getAccounts, createTrade, searchSecurities, getExchangeRate } from '../../api/client'
+import { getAccounts, createTrade, createPosition, createPayment, searchSecurities, getExchangeRate, refreshPrices } from '../../api/client'
 import type { CreateTradeInput, SecuritySearchResult } from '../../api/client'
 import { usePortfolioStore } from '../../store/portfolioStore'
 import { MODAL_CSS } from './modalShared'
-import type { Account } from '@/types'
+import type { Account, Position, PaymentType } from '@/types'
 
 interface Props {
   open: boolean
   onClose: () => void
 }
 
-type FieldKey = 'date' | 'account' | 'ticker' | 'side' | 'quantity' | 'price' | 'fee' | 'currency'
+type ImportFormat = 'trades' | 'positions' | 'payments'
 
-const FIELD_ALIASES: Record<FieldKey, string[]> = {
-  date: ['дата', 'дата операции', 'дата сделки', 'date'],
-  account: ['счет', 'счёт', 'портфель', 'аккаунт', 'account'],
-  ticker: ['тикер', 'инструмент', 'бумага', 'актив', 'ticker', 'symbol'],
+const FORMAT_LABEL: Record<ImportFormat, string> = {
+  trades: 'Список сделок',
+  positions: 'Текущие позиции (снэпшот)',
+  payments: 'Дивиденды и купоны',
+}
+
+const FORMAT_UNIT: Record<ImportFormat, string> = {
+  trades: 'сделок',
+  positions: 'позиций',
+  payments: 'выплат',
+}
+
+const ASSET_TYPE_LABEL: Record<'equity' | 'bond', string> = {
+  equity: 'Акция',
+  bond: 'Облигация',
+}
+
+const PAYMENT_TYPE_LABEL: Record<PaymentType, string> = {
+  dividend: 'Дивиденд',
+  coupon: 'Купон',
+  amortization: 'Амортизация',
+  redemption: 'Погашение',
+}
+
+const ACCOUNT_ALIASES = ['счет', 'счёт', 'портфель', 'аккаунт', 'account']
+const TICKER_ALIASES = ['тикер', 'инструмент', 'бумага', 'актив', 'ticker', 'symbol']
+const CURRENCY_ALIASES = ['валюта', 'currency']
+const DATE_ALIASES = ['дата', 'дата операции', 'дата сделки', 'дата выплаты', 'date']
+const QUANTITY_ALIASES = ['кол-во', 'количество', 'кол во', 'quantity', 'qty']
+
+type TradeFieldKey = 'date' | 'account' | 'ticker' | 'side' | 'quantity' | 'price' | 'fee' | 'currency'
+
+const TRADE_ALIASES: Record<TradeFieldKey, string[]> = {
+  date: DATE_ALIASES,
+  account: ACCOUNT_ALIASES,
+  ticker: TICKER_ALIASES,
   side: ['тип', 'тип операции', 'операция', 'вид операции', 'side', 'type'],
-  quantity: ['кол-во', 'количество', 'кол во', 'quantity', 'qty'],
+  quantity: QUANTITY_ALIASES,
   price: ['цена', 'цена исполнения', 'price'],
   fee: ['комиссия', 'комиссия брокера', 'fee'],
-  currency: ['валюта', 'currency'],
+  currency: CURRENCY_ALIASES,
+}
+
+type PositionFieldKey = 'account' | 'ticker' | 'assetType' | 'quantity' | 'averagePrice' | 'currency'
+
+const POSITION_ALIASES: Record<PositionFieldKey, string[]> = {
+  account: ACCOUNT_ALIASES,
+  ticker: TICKER_ALIASES,
+  assetType: ['тип актива', 'вид актива', 'asset type'],
+  quantity: QUANTITY_ALIASES,
+  averagePrice: ['средняя цена', 'средняя цена покупки', 'цена покупки', 'average price', 'avg price'],
+  currency: CURRENCY_ALIASES,
+}
+
+type PaymentFieldKey = 'date' | 'account' | 'ticker' | 'paymentType' | 'grossAmount' | 'taxWithheld' | 'netAmount' | 'currency'
+
+const PAYMENT_ALIASES: Record<PaymentFieldKey, string[]> = {
+  date: DATE_ALIASES,
+  account: ACCOUNT_ALIASES,
+  ticker: TICKER_ALIASES,
+  paymentType: ['тип выплаты', 'вид выплаты', 'payment type'],
+  grossAmount: ['сумма до налога', 'сумма до налогов', 'сумма до вычета налога', 'gross amount'],
+  taxWithheld: ['налог', 'удержанный налог', 'tax', 'ндфл'],
+  netAmount: ['сумма к получению', 'к получению', 'net amount'],
+  currency: CURRENCY_ALIASES,
 }
 
 function normalizeHeader(h: string): string {
   return h.toString().trim().toLowerCase().replace(/ё/g, 'е').replace(/\s+/g, ' ')
 }
 
-function buildFieldMap(headers: string[]): Partial<Record<FieldKey, string>> {
-  const map: Partial<Record<FieldKey, string>> = {}
+function buildFieldMap<K extends string>(headers: string[], aliases: Record<K, string[]>): Partial<Record<K, string>> {
+  const map: Partial<Record<K, string>> = {}
   for (const header of headers) {
     const norm = normalizeHeader(header)
-    for (const field of Object.keys(FIELD_ALIASES) as FieldKey[]) {
+    for (const field of Object.keys(aliases) as K[]) {
       if (map[field]) continue
-      if (FIELD_ALIASES[field].includes(norm)) map[field] = header
+      if (aliases[field].includes(norm)) map[field] = header
     }
   }
   return map
+}
+
+/** Определяет формат файла по сигнатуре заголовков — см. CLAUDE.md «Способ 2: Импорт из Excel». */
+function detectFormat(headers: string[]): ImportFormat {
+  const norm = new Set(headers.map(normalizeHeader))
+  const hasAny = (aliases: string[]) => aliases.some((a) => norm.has(a))
+
+  const hasPaymentType = hasAny(PAYMENT_ALIASES.paymentType)
+  const hasGross = hasAny(PAYMENT_ALIASES.grossAmount)
+  const hasNet = hasAny(PAYMENT_ALIASES.netAmount)
+  const hasAssetType = hasAny(POSITION_ALIASES.assetType)
+  const hasAvgPrice = hasAny(POSITION_ALIASES.averagePrice)
+  const hasSide = hasAny(TRADE_ALIASES.side)
+
+  if (hasPaymentType || (hasGross && hasNet)) return 'payments'
+  if (hasAssetType && hasAvgPrice && !hasSide) return 'positions'
+  return 'trades'
 }
 
 function parseDateValue(value: unknown): string {
@@ -72,7 +145,37 @@ function parseSide(value: unknown): 'buy' | 'sell' | null {
   return null
 }
 
-interface ParsedRow {
+function parseAssetType(value: unknown): 'equity' | 'bond' | null {
+  const str = String(value ?? '').trim().toLowerCase()
+  if (!str) return null
+  if (str.startsWith('акци') || str === 'equity' || str === 'stock' || str === 'share' || str === 'shares') return 'equity'
+  if (str.startsWith('облига') || str.startsWith('бонд') || str === 'bond' || str === 'bonds') return 'bond'
+  return null
+}
+
+function parsePaymentType(value: unknown): PaymentType | null {
+  const str = String(value ?? '').trim().toLowerCase()
+  if (!str) return null
+  if (str.startsWith('дивиденд') || str === 'dividend' || str === 'dividends') return 'dividend'
+  if (str.startsWith('купон') || str === 'coupon' || str === 'coupons') return 'coupon'
+  if (str.startsWith('амортизац') || str === 'amortization') return 'amortization'
+  if (str.startsWith('погашен') || str === 'redemption') return 'redemption'
+  return null
+}
+
+function resolveAccount(accountNameRaw: string, accounts: Account[]): { accountId: string | null; accountName: string; error?: string } {
+  if (accountNameRaw) {
+    const found = accounts.find((a) => a.name.trim().toLowerCase() === accountNameRaw.toLowerCase())
+    if (found) return { accountId: found.id, accountName: found.name }
+    return { accountId: null, accountName: accountNameRaw, error: `портфель «${accountNameRaw}» не найден` }
+  }
+  if (accounts.length === 1) return { accountId: accounts[0].id, accountName: accounts[0].name }
+  if (accounts.length > 1) return { accountId: null, accountName: '', error: 'не указан портфель, а у вас их несколько' }
+  return { accountId: null, accountName: '', error: 'нет ни одного портфеля' }
+}
+
+interface TradeRow {
+  format: 'trades'
   rowNum: number
   date: string
   accountName: string
@@ -89,8 +192,44 @@ interface ParsedRow {
   error: string | null
 }
 
-function buildRow(raw: Record<string, unknown>, idx: number, fieldMap: Partial<Record<FieldKey, string>>, accounts: Account[]): ParsedRow {
-  const get = (field: FieldKey): unknown => {
+interface PositionRow {
+  format: 'positions'
+  rowNum: number
+  accountName: string
+  accountId: string | null
+  ticker: string
+  name?: string
+  assetType: 'equity' | 'bond'
+  assetTypeExplicit: boolean
+  quantity: number
+  averagePrice: number
+  currency: string
+  currencyExplicit: boolean
+  exchange: string
+  error: string | null
+}
+
+interface PaymentRow {
+  format: 'payments'
+  rowNum: number
+  date: string
+  accountName: string
+  accountId: string | null
+  ticker: string
+  name?: string
+  type: PaymentType | null
+  grossAmount: number
+  taxWithheld: number
+  netAmount: number
+  currency: string
+  currencyExplicit: boolean
+  error: string | null
+}
+
+type ParsedRow = TradeRow | PositionRow | PaymentRow
+
+function buildTradeRow(raw: Record<string, unknown>, idx: number, fieldMap: Partial<Record<TradeFieldKey, string>>, accounts: Account[]): TradeRow {
+  const get = (field: TradeFieldKey): unknown => {
     const key = fieldMap[field]
     return key != null ? raw[key] : undefined
   }
@@ -101,7 +240,6 @@ function buildRow(raw: Record<string, unknown>, idx: number, fieldMap: Partial<R
   const price = parseNumber(get('price'))
   const fee = parseNumber(get('fee'))
   const currencyRaw = String(get('currency') ?? '').trim().toUpperCase()
-  const accountNameRaw = String(get('account') ?? '').trim()
 
   const errors: string[] = []
   if (!ticker) errors.push('не указан тикер')
@@ -109,26 +247,15 @@ function buildRow(raw: Record<string, unknown>, idx: number, fieldMap: Partial<R
   if (!quantity || quantity <= 0) errors.push('некорректное количество')
   if (!price || price <= 0) errors.push('некорректная цена')
 
-  let accountId: string | null = null
-  let accountName = accountNameRaw
-  if (accountNameRaw) {
-    const found = accounts.find((a) => a.name.trim().toLowerCase() === accountNameRaw.toLowerCase())
-    if (found) accountId = found.id
-    else errors.push(`портфель «${accountNameRaw}» не найден`)
-  } else if (accounts.length === 1) {
-    accountId = accounts[0].id
-    accountName = accounts[0].name
-  } else if (accounts.length > 1) {
-    errors.push('не указан портфель, а у вас их несколько')
-  } else {
-    errors.push('нет ни одного портфеля')
-  }
+  const acc = resolveAccount(String(get('account') ?? '').trim(), accounts)
+  if (acc.error) errors.push(acc.error)
 
   return {
+    format: 'trades',
     rowNum: idx + 2,
     date: parseDateValue(get('date')),
-    accountName,
-    accountId,
+    accountName: acc.accountName,
+    accountId: acc.accountId,
     ticker,
     assetType: 'equity',
     side,
@@ -141,11 +268,89 @@ function buildRow(raw: Record<string, unknown>, idx: number, fieldMap: Partial<R
   }
 }
 
+function buildPositionRow(raw: Record<string, unknown>, idx: number, fieldMap: Partial<Record<PositionFieldKey, string>>, accounts: Account[]): PositionRow {
+  const get = (field: PositionFieldKey): unknown => {
+    const key = fieldMap[field]
+    return key != null ? raw[key] : undefined
+  }
+
+  const ticker = String(get('ticker') ?? '').trim().toUpperCase()
+  const assetTypeParsed = parseAssetType(get('assetType'))
+  const quantity = parseNumber(get('quantity'))
+  const averagePrice = parseNumber(get('averagePrice'))
+  const currencyRaw = String(get('currency') ?? '').trim().toUpperCase()
+
+  const errors: string[] = []
+  if (!ticker) errors.push('не указан тикер')
+  if (!quantity || quantity <= 0) errors.push('некорректное количество')
+  if (!averagePrice || averagePrice <= 0) errors.push('некорректная средняя цена')
+
+  const acc = resolveAccount(String(get('account') ?? '').trim(), accounts)
+  if (acc.error) errors.push(acc.error)
+
+  return {
+    format: 'positions',
+    rowNum: idx + 2,
+    accountName: acc.accountName,
+    accountId: acc.accountId,
+    ticker,
+    assetType: assetTypeParsed ?? 'equity',
+    assetTypeExplicit: assetTypeParsed != null,
+    quantity,
+    averagePrice,
+    currency: currencyRaw || 'RUB',
+    currencyExplicit: !!currencyRaw,
+    exchange: 'MOEX',
+    error: errors.length > 0 ? errors.join('; ') : null,
+  }
+}
+
+function buildPaymentRow(raw: Record<string, unknown>, idx: number, fieldMap: Partial<Record<PaymentFieldKey, string>>, accounts: Account[]): PaymentRow {
+  const get = (field: PaymentFieldKey): unknown => {
+    const key = fieldMap[field]
+    return key != null ? raw[key] : undefined
+  }
+
+  const ticker = String(get('ticker') ?? '').trim().toUpperCase()
+  const type = parsePaymentType(get('paymentType'))
+  const grossAmount = parseNumber(get('grossAmount'))
+  const taxWithheld = parseNumber(get('taxWithheld'))
+  const netAmountRaw = parseNumber(get('netAmount'))
+  const currencyRaw = String(get('currency') ?? '').trim().toUpperCase()
+
+  const errors: string[] = []
+  if (!ticker) errors.push('не указан тикер')
+  if (!type) errors.push('не указан тип выплаты (дивиденд/купон/амортизация/погашение)')
+  if (!grossAmount || grossAmount <= 0) errors.push('некорректная сумма до налога')
+
+  const acc = resolveAccount(String(get('account') ?? '').trim(), accounts)
+  if (acc.error) errors.push(acc.error)
+
+  const netAmount = netAmountRaw > 0 ? netAmountRaw : Math.round((grossAmount - taxWithheld) * 100) / 100
+
+  return {
+    format: 'payments',
+    rowNum: idx + 2,
+    date: parseDateValue(get('date')),
+    accountName: acc.accountName,
+    accountId: acc.accountId,
+    ticker,
+    type,
+    grossAmount,
+    taxWithheld,
+    netAmount,
+    currency: currencyRaw || 'RUB',
+    currencyExplicit: !!currencyRaw,
+    error: errors.length > 0 ? errors.join('; ') : null,
+  }
+}
+
 const fmtNum = (n: number) => n.toLocaleString('ru-RU', { maximumFractionDigits: 4 })
 
 interface ImportResult {
   success: number
   failed: number
+  format: ImportFormat
 }
 
 export function ImportModal({ open, onClose }: Props) {
@@ -153,6 +358,7 @@ export function ImportModal({ open, onClose }: Props) {
 
   const bump = usePortfolioStore((s) => s.bump)
   const [accounts, setAccounts] = useState<Account[]>([])
+  const [format, setFormat] = useState<ImportFormat>('trades')
   const [rows, setRows] = useState<ParsedRow[]>([])
   const [parsing, setParsing] = useState(false)
   const [importing, setImporting] = useState(false)
@@ -185,14 +391,31 @@ export function ImportModal({ open, onClose }: Props) {
       const raw = XLSX.utils.sheet_to_json<Record<string, unknown>>(sheet, { defval: '' })
       if (raw.length === 0) throw new Error('Файл пуст или не содержит строк с данными')
 
-      const fieldMap = buildFieldMap(Object.keys(raw[0]))
-      if (!fieldMap.ticker || !fieldMap.side || !fieldMap.quantity || !fieldMap.price) {
-        throw new Error('Не удалось определить колонки файла. Нужны как минимум: Тикер, Тип, Количество, Цена')
+      const headers = Object.keys(raw[0])
+      const fmt = detectFormat(headers)
+
+      let parsed: ParsedRow[]
+      if (fmt === 'payments') {
+        const fieldMap = buildFieldMap(headers, PAYMENT_ALIASES)
+        if (!fieldMap.ticker || !fieldMap.grossAmount) {
+          throw new Error('Не удалось определить колонки файла выплат. Нужны как минимум: Тикер, Сумма до налога')
+        }
+        parsed = raw.map((r, i) => buildPaymentRow(r, i, fieldMap, accounts))
+      } else if (fmt === 'positions') {
+        const fieldMap = buildFieldMap(headers, POSITION_ALIASES)
+        if (!fieldMap.ticker || !fieldMap.quantity || !fieldMap.averagePrice) {
+          throw new Error('Не удалось определить колонки файла позиций. Нужны как минимум: Тикер, Кол-во, Средняя цена')
+        }
+        parsed = raw.map((r, i) => buildPositionRow(r, i, fieldMap, accounts))
+      } else {
+        const fieldMap = buildFieldMap(headers, TRADE_ALIASES)
+        if (!fieldMap.ticker || !fieldMap.side || !fieldMap.quantity || !fieldMap.price) {
+          throw new Error('Не удалось определить колонки файла. Нужны как минимум: Тикер, Тип, Количество, Цена')
+        }
+        parsed = raw.map((r, i) => buildTradeRow(r, i, fieldMap, accounts))
       }
 
-      const parsed = raw.map((r, i) => buildRow(r, i, fieldMap, accounts))
-
-      // Обогащение по тикерам: тип актива, валюта, название бумаги
+      // Обогащение по тикерам: тип актива, валюта, название бумаги, биржа
       const tickers = [...new Set(parsed.filter((r) => !r.error).map((r) => r.ticker))]
       const found = await Promise.all(
         tickers.map((t) => searchSecurities(t).then((res) => res[0]).catch(() => undefined))
@@ -202,24 +425,36 @@ export function ImportModal({ open, onClose }: Props) {
       for (const row of parsed) {
         if (row.error) continue
         const match = enrichMap.get(row.ticker)
-        if (match) {
+        if (!match) continue
+        if (row.format === 'trades') {
           if (match.assetType) row.assetType = match.assetType
+          if (!row.currencyExplicit) row.currency = match.currency
+          row.name = match.shortName
+        } else if (row.format === 'positions') {
+          if (!row.assetTypeExplicit && match.assetType) row.assetType = match.assetType
+          if (!row.currencyExplicit) row.currency = match.currency
+          row.exchange = match.exchange
+          row.name = match.shortName
+        } else {
           if (!row.currencyExplicit) row.currency = match.currency
           row.name = match.shortName
         }
       }
 
-      // Курсы валют для не-рублёвых сделок (нужны для приведения позиции к рублю)
-      const currencies = [...new Set(parsed.filter((r) => !r.error && r.currency !== 'RUB').map((r) => r.currency))]
-      for (const cur of currencies) {
-        try {
-          const r = await getExchangeRate(cur)
-          ratesRef.current.set(cur, r.rate)
-        } catch {
-          // курс не получен — позиция будет учтена по курсу 1, пользователь сможет поправить вручную
+      // Курсы валют для не-рублёвых строк (нужны для приведения сделок/позиций к рублю)
+      if (fmt !== 'payments') {
+        const currencies = [...new Set(parsed.filter((r) => !r.error && r.currency !== 'RUB').map((r) => r.currency))]
+        for (const cur of currencies) {
+          try {
+            const r = await getExchangeRate(cur)
+            ratesRef.current.set(cur, r.rate)
+          } catch {
+            // курс не получен — позиция будет учтена по курсу 1, пользователь сможет поправить вручную
+          }
         }
       }
 
+      setFormat(fmt)
       setRows(parsed)
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err))
@@ -247,25 +482,58 @@ export function ImportModal({ open, onClose }: Props) {
     let success = 0
     let failed = 0
     const updated = [...rows]
+    let positionsImported = false
 
     for (let i = 0; i < updated.length; i++) {
       const row = updated[i]
-      if (row.error || !row.accountId || !row.side) { failed++; continue }
+      if (row.error || !row.accountId) { failed++; continue }
       try {
-        const input: CreateTradeInput = {
-          accountId: row.accountId,
-          ticker: row.ticker,
-          name: row.name,
-          side: row.side,
-          quantity: row.quantity,
-          price: row.price,
-          fee: row.fee,
-          currency: row.currency,
-          assetType: row.assetType,
-          executedAt: row.date,
-          exchangeRate: row.currency !== 'RUB' ? ratesRef.current.get(row.currency) : undefined,
+        if (row.format === 'trades') {
+          if (!row.side) { failed++; continue }
+          const input: CreateTradeInput = {
+            accountId: row.accountId,
+            ticker: row.ticker,
+            name: row.name,
+            side: row.side,
+            quantity: row.quantity,
+            price: row.price,
+            fee: row.fee,
+            currency: row.currency,
+            assetType: row.assetType,
+            executedAt: row.date,
+            exchangeRate: row.currency !== 'RUB' ? ratesRef.current.get(row.currency) : undefined,
+          }
+          await createTrade(input)
+        } else if (row.format === 'positions') {
+          // Поля выпуска облигации (номинал, купон, дата погашения) необязательны на сервере —
+          // справочные данные MOEX подтянутся при обновлении цен после импорта.
+          const payload = {
+            accountId: row.accountId,
+            ticker: row.ticker,
+            name: row.name,
+            exchange: row.exchange,
+            assetType: row.assetType,
+            currency: row.currency,
+            quantity: row.quantity,
+            averagePrice: row.averagePrice,
+            averagingMethod: 'WAVG',
+            exchangeRate: row.currency !== 'RUB' ? ratesRef.current.get(row.currency) : undefined,
+          } as unknown as Omit<Position, 'id'>
+          await createPosition(payload)
+          positionsImported = true
+        } else {
+          if (!row.type) { failed++; continue }
+          await createPayment({
+            accountId: row.accountId,
+            ticker: row.ticker,
+            type: row.type,
+            paymentDate: row.date.slice(0, 10),
+            grossAmount: row.grossAmount,
+            taxWithheld: row.taxWithheld,
+            netAmount: row.netAmount,
+            currency: row.currency,
+          })
         }
-        await createTrade(input)
         success++
       } catch (err) {
         failed++
@@ -274,9 +542,12 @@ export function ImportModal({ open, onClose }: Props) {
     }
 
     setRows(updated)
-    setResult({ success, failed })
+    setResult({ success, failed, format })
     setImporting(false)
-    if (success > 0) bump()
+    if (success > 0) {
+      bump()
+      if (positionsImported) refreshPrices().catch(() => {})
+    }
   }
 
   if (!open) return null
@@ -286,9 +557,11 @@ export function ImportModal({ open, onClose }: Props) {
 
   return (
     <div className="ia-modal-backdrop" onClick={(e) => { if (e.target === e.currentTarget) onClose() }}>
-      <div className="ia-modal ia-modal--wide" role="dialog" aria-modal="true" aria-label="Импорт сделок">
+      <div className="ia-modal ia-modal--wide" role="dialog" aria-modal="true" aria-label="Импорт данных">
         <div className="ia-modal__head">
-          <span className="ia-modal__title">Импорт сделок</span>
+          <span className="ia-modal__title">
+            Импорт данных{rows.length > 0 && !result ? ` · ${FORMAT_LABEL[format]}` : ''}
+          </span>
           <button className="ia-modal-close" onClick={onClose} aria-label="Закрыть"><X size={18} /></button>
         </div>
 
@@ -301,7 +574,7 @@ export function ImportModal({ open, onClose }: Props) {
               <div>
                 <div className="ia-import-result__title">Импорт завершён</div>
                 <div className="ia-import-result__sub">
-                  Успешно добавлено сделок: {result.success} из {rows.length}
+                  Успешно добавлено {FORMAT_UNIT[result.format]}: {result.success} из {rows.length}
                   {result.failed > 0 && `, с ошибками: ${result.failed}`}
                 </div>
               </div>
@@ -326,9 +599,11 @@ export function ImportModal({ open, onClose }: Props) {
                 ) : (
                   <>
                     <Upload size={28} />
-                    <span>Выберите файл .csv или .xlsx со списком сделок</span>
+                    <span>Выберите файл .csv или .xlsx — формат определится автоматически</span>
                     <span className="ia-import-drop__hint">
-                      Колонки: Дата, Счёт, Тикер, Тип (покупка/продажа), Кол-во, Цена, Комиссия, Валюта.
+                      Сделки: Дата, Счёт, Тикер, Тип (покупка/продажа), Кол-во, Цена, Комиссия, Валюта.<br />
+                      Текущие позиции: Счёт, Тикер, Тип актива, Кол-во, Средняя цена, Валюта.<br />
+                      Дивиденды/купоны: Дата, Счёт, Тикер, Тип выплаты, Сумма до налога, Налог, Сумма к получению.<br />
                       Названия колонок могут отличаться — попробуем сопоставить автоматически.
                     </span>
                   </>
@@ -338,6 +613,7 @@ export function ImportModal({ open, onClose }: Props) {
           ) : (
             <>
               <div className="ia-import-stats">
+                <span>Формат: <b>{FORMAT_LABEL[format]}</b></span>
                 <span>Всего строк: <b>{rows.length}</b></span>
                 <span>Готово к импорту: <b>{validCount}</b></span>
                 {errorCount > 0 && <span>С ошибками: <b>{errorCount}</b></span>}
@@ -345,42 +621,124 @@ export function ImportModal({ open, onClose }: Props) {
 
               <div className="ia-import-table-wrap">
                 <table className="ia-table">
-                  <thead>
-                    <tr>
-                      <th>#</th>
-                      <th>Дата</th>
-                      <th>Портфель</th>
-                      <th>Тикер</th>
-                      <th>Тип</th>
-                      <th className="r">Кол-во</th>
-                      <th className="r">Цена</th>
-                      <th className="r">Комиссия</th>
-                      <th>Валюта</th>
-                      <th>Статус</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {rows.map((row, i) => (
-                      <tr key={i} className={row.error ? 'ia-import-row--error' : ''}>
-                        <td>{row.rowNum}</td>
-                        <td>{new Date(row.date).toLocaleDateString('ru-RU')}</td>
-                        <td>{row.accountName || '—'}</td>
-                        <td>{row.ticker}{row.name ? ` · ${row.name}` : ''}</td>
-                        <td>{row.side === 'buy' ? 'Покупка' : row.side === 'sell' ? 'Продажа' : '—'}</td>
-                        <td className="r">{row.quantity > 0 ? fmtNum(row.quantity) : '—'}</td>
-                        <td className="r">{row.price > 0 ? fmtNum(row.price) : '—'}</td>
-                        <td className="r">{fmtNum(row.fee)}</td>
-                        <td>{row.currency}</td>
-                        <td>
-                          {row.error ? (
-                            <Badge tone="negative" size="sm" title={row.error}>Ошибка</Badge>
-                          ) : (
-                            <Badge tone="positive" size="sm">ОК</Badge>
-                          )}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
+                  {format === 'trades' && (
+                    <>
+                      <thead>
+                        <tr>
+                          <th>#</th>
+                          <th>Дата</th>
+                          <th>Портфель</th>
+                          <th>Тикер</th>
+                          <th>Тип</th>
+                          <th className="r">Кол-во</th>
+                          <th className="r">Цена</th>
+                          <th className="r">Комиссия</th>
+                          <th>Валюта</th>
+                          <th>Статус</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {(rows as TradeRow[]).map((row, i) => (
+                          <tr key={i} className={row.error ? 'ia-import-row--error' : ''}>
+                            <td>{row.rowNum}</td>
+                            <td>{new Date(row.date).toLocaleDateString('ru-RU')}</td>
+                            <td>{row.accountName || '—'}</td>
+                            <td>{row.ticker}{row.name ? ` · ${row.name}` : ''}</td>
+                            <td>{row.side === 'buy' ? 'Покупка' : row.side === 'sell' ? 'Продажа' : '—'}</td>
+                            <td className="r">{row.quantity > 0 ? fmtNum(row.quantity) : '—'}</td>
+                            <td className="r">{row.price > 0 ? fmtNum(row.price) : '—'}</td>
+                            <td className="r">{fmtNum(row.fee)}</td>
+                            <td>{row.currency}</td>
+                            <td>
+                              {row.error ? (
+                                <Badge tone="negative" size="sm" title={row.error}>Ошибка</Badge>
+                              ) : (
+                                <Badge tone="positive" size="sm">ОК</Badge>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </>
+                  )}
+
+                  {format === 'positions' && (
+                    <>
+                      <thead>
+                        <tr>
+                          <th>#</th>
+                          <th>Портфель</th>
+                          <th>Тикер</th>
+                          <th>Тип актива</th>
+                          <th className="r">Кол-во</th>
+                          <th className="r">Средняя цена</th>
+                          <th>Валюта</th>
+                          <th>Статус</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {(rows as PositionRow[]).map((row, i) => (
+                          <tr key={i} className={row.error ? 'ia-import-row--error' : ''}>
+                            <td>{row.rowNum}</td>
+                            <td>{row.accountName || '—'}</td>
+                            <td>{row.ticker}{row.name ? ` · ${row.name}` : ''}</td>
+                            <td>{ASSET_TYPE_LABEL[row.assetType]}</td>
+                            <td className="r">{row.quantity > 0 ? fmtNum(row.quantity) : '—'}</td>
+                            <td className="r">{row.averagePrice > 0 ? fmtNum(row.averagePrice) : '—'}</td>
+                            <td>{row.currency}</td>
+                            <td>
+                              {row.error ? (
+                                <Badge tone="negative" size="sm" title={row.error}>Ошибка</Badge>
+                              ) : (
+                                <Badge tone="positive" size="sm">ОК</Badge>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </>
+                  )}
+
+                  {format === 'payments' && (
+                    <>
+                      <thead>
+                        <tr>
+                          <th>#</th>
+                          <th>Дата</th>
+                          <th>Портфель</th>
+                          <th>Тикер</th>
+                          <th>Тип выплаты</th>
+                          <th className="r">До налога</th>
+                          <th className="r">Налог</th>
+                          <th className="r">К получению</th>
+                          <th>Валюта</th>
+                          <th>Статус</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {(rows as PaymentRow[]).map((row, i) => (
+                          <tr key={i} className={row.error ? 'ia-import-row--error' : ''}>
+                            <td>{row.rowNum}</td>
+                            <td>{new Date(row.date).toLocaleDateString('ru-RU')}</td>
+                            <td>{row.accountName || '—'}</td>
+                            <td>{row.ticker}{row.name ? ` · ${row.name}` : ''}</td>
+                            <td>{row.type ? PAYMENT_TYPE_LABEL[row.type] : '—'}</td>
+                            <td className="r">{row.grossAmount > 0 ? fmtNum(row.grossAmount) : '—'}</td>
+                            <td className="r">{fmtNum(row.taxWithheld)}</td>
+                            <td className="r">{fmtNum(row.netAmount)}</td>
+                            <td>{row.currency}</td>
+                            <td>
+                              {row.error ? (
+                                <Badge tone="negative" size="sm" title={row.error}>Ошибка</Badge>
+                              ) : (
+                                <Badge tone="positive" size="sm">ОК</Badge>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </>
+                  )}
                 </table>
               </div>
 
