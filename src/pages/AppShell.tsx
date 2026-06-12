@@ -70,12 +70,17 @@ export function AppShell({ page, onNav, onAddTrade, onAddPortfolio, onAddDeposit
   const actionRef = useRef<HTMLDivElement>(null)
   const [mobileNavOpen, setMobileNavOpen] = useState(false)
 
-  // Подтягиваем актуальные котировки при загрузке и при смене активного портфеля
+  // Подтягиваем актуальные котировки при загрузке и далее каждые 25 секунд
   useEffect(() => {
     if (!activeOrg) return
-    refreshPrices().then(bump).catch(() => {
-      // молча игнорируем — котировки обновятся при следующей попытке
-    })
+    const fetchPrices = () => {
+      refreshPrices().then(bump).catch(() => {
+        // молча игнорируем — котировки обновятся при следующей попытке
+      })
+    }
+    fetchPrices()
+    const interval = setInterval(fetchPrices, 25000)
+    return () => clearInterval(interval)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeOrg?.id])
 
