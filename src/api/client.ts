@@ -223,3 +223,61 @@ export function refreshPrices(): Promise<RefreshPricesResult> {
   return request<RefreshPricesResult>(`/portfolio/refresh-prices${q}`, { method: 'POST' })
 }
 
+// AI-ассистент
+export interface AssistantChatMessage {
+  role: 'user' | 'assistant'
+  content: string
+}
+
+/**
+ * Стримит ответ ИИ-ассистента по SSE: messages — вся история диалога (включая новое сообщение
+ * пользователя последним), onDelta вызывается для каждого фрагмента текста ответа.
+ */
+export async function streamAssistantChat(
+  messages: AssistantChatMessage[],
+  onDelta: (text: string) => void,
+  signal?: AbortSignal,
+): Promise<void> {
+  const orgId = activeOrgId()
+  const q = orgId ? `?orgId=${orgId}` : ''
+  const response = await fetch(`/api/assistant/chat${q}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...authHeader() },
+    credentials: 'include',
+    body: JSON.stringify({ messages }),
+    signal,
+  })
+
+  if (!response.ok || !response.body) {
+    const body = await response.json().catch(() => ({})) as { error?: string }
+    throw new Error(body.error ?? `API /assistant/chat responded with ${response.status}`)
+  }
+
+  const reader = response.body.getReader()
+  const decoder = new TextDecoder()
+  let buffer = ''
+  let eventName = 'message'
+
+  while (true) {
+    const { done, value } = await reader.read()
+    if (done) break
+    buffer += decoder.decode(value, { stream: true })
+    const lines = buffer.split('\n')
+    buffer = lines.pop() ?? ''
+    for (const line of lines) {
+      if (line.startsWith('event:')) {
+        eventName = line.slice(6).trim()
+        continue
+      }
+      if (!line.startsWith('data:')) continue
+      const payload = line.slice(5).trim()
+      if (!payload) continue
+      const data = JSON.parse(payload) as { text?: string; error?: string }
+      if (eventName === 'delta' && data.text) onDelta(data.text)
+      else if (eventName === 'error') throw new Error(data.error ?? 'Ошибка ассистента')
+      else if (eventName === 'done') return
+      eventName = 'message'
+    }
+  }
+}
+

@@ -13,6 +13,7 @@ import { orgRouter } from './routes/orgs.js'
 import { securitiesRouter } from './routes/securities.js'
 import { cashRouter } from './routes/cash.js'
 import { noteRouter } from './routes/notes.js'
+import { assistantRouter } from './routes/assistant.js'
 import { apiLimiter } from './middleware/rateLimit.js'
 
 export function createApp() {
@@ -38,6 +39,7 @@ export function createApp() {
   app.use('/api/securities', securitiesRouter)
   app.use('/api/cash', cashRouter)
   app.use('/api/notes', noteRouter)
+  app.use('/api/assistant', assistantRouter)
 
   app.use((req, res) => {
     res.status(404).json({ error: 'Not found', path: req.path })

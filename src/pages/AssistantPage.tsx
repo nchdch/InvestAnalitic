@@ -1,95 +1,81 @@
-﻿import React, { useState, useRef } from 'react'
-import { AIMessage, AIComposer, Button } from '../components'
+import React, { useEffect, useRef, useState } from 'react'
+import { AIMessage, AIComposer } from '../components'
+import { streamAssistantChat, type AssistantChatMessage } from '../api/client'
+import { renderMarkdown } from '../utils/markdown'
 
-interface Message {
-  role: 'ai' | 'user'
-  body: React.ReactNode
-  actions?: React.ReactNode
-}
-
-const INITIAL_MESSAGES: Message[] = [
-  {
-    role: 'ai',
-    body: (
-      <p>
-        Привет! Я твой инвестиционный ИИ-аналитик. Знаю твой портфель досконально —
-        спрашивай или добавляй сделки в любой форме.
-      </p>
-    ),
-  },
-  {
-    role: 'user',
-    body: 'Как мой портфель за месяц?',
-  },
-  {
-    role: 'ai',
-    body: (
-      <>
-        <p>
-          За месяц портфель <strong>+4,8%</strong> (+114 200 ₽). Основной вклад —
-          YDEX (+17,5%) и SBER (+31,1% за всё время).
-        </p>
-        <p>
-          Что настораживает: GAZP в минусе на −21%, тянет результат вниз.
-          И LKOH разросся до 28,9% — стоит присмотреться к балансу.
-        </p>
-      </>
-    ),
-    actions: (
-      <>
-        <Button variant="soft" size="sm">Разобрать GAZP</Button>
-        <Button variant="ghost" size="sm">Показать P&L</Button>
-      </>
-    ),
-  },
-]
+const WELCOME = 'Привет! Я твой инвестиционный ИИ-аналитик. Знаю твой портфель досконально — спрашивай или добавляй сделки в любой форме.'
 
 export function AssistantPage() {
-  const [msgs, setMsgs] = useState<Message[]>(INITIAL_MESSAGES)
-  const [typing, setTyping] = useState(false)
+  const [messages, setMessages] = useState<AssistantChatMessage[]>([])
+  const [streamingText, setStreamingText] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  const [sending, setSending] = useState(false)
   const feedRef = useRef<HTMLDivElement>(null)
+  const abortRef = useRef<AbortController | null>(null)
 
-  const send = (text: string) => {
-    setMsgs((m) => [...m, { role: 'user', body: text }])
-    setTyping(true)
-    setTimeout(() => {
-      setTyping(false)
-      setMsgs((m) => [
-        ...m,
-        {
-          role: 'ai',
-          body: (
-            <p>
-              Записал: «{text}». В демо-режиме ответ — заглушка,
-              но в продукте здесь будет конкретный разбор с цифрами из портфеля
-              и вариантами действий.
-            </p>
-          ),
-        },
-      ])
-      setTimeout(() => {
-        feedRef.current?.lastElementChild?.scrollIntoView({ behavior: 'smooth' })
-      }, 50)
-    }, 1400)
+  useEffect(() => () => abortRef.current?.abort(), [])
+
+  const scrollToBottom = () => {
+    setTimeout(() => feedRef.current?.lastElementChild?.scrollIntoView({ behavior: 'smooth' }), 50)
+  }
+
+  const send = async (text: string) => {
+    setError(null)
+    const history: AssistantChatMessage[] = [...messages, { role: 'user', content: text }]
+    setMessages(history)
+    setStreamingText('')
+    setSending(true)
+    scrollToBottom()
+
+    const controller = new AbortController()
+    abortRef.current = controller
+    let acc = ''
+
+    try {
+      await streamAssistantChat(history, (delta) => {
+        acc += delta
+        setStreamingText(acc)
+        scrollToBottom()
+      }, controller.signal)
+      setMessages((m) => [...m, { role: 'assistant', content: acc }])
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Не удалось получить ответ ассистента')
+      if (acc) setMessages((m) => [...m, { role: 'assistant', content: acc }])
+    } finally {
+      setStreamingText(null)
+      setSending(false)
+      abortRef.current = null
+    }
   }
 
   return (
     <div className="ia-screen ia-chat">
       <div className="ia-chat__feed" ref={feedRef}>
-        {msgs.map((m, i) => (
-          <AIMessage key={i} role={m.role} actions={m.actions}>
-            {m.body}
+        <AIMessage role="ai">{renderMarkdown(WELCOME)}</AIMessage>
+        {messages.map((m, i) => (
+          <AIMessage key={i} role={m.role === 'user' ? 'user' : 'ai'}>
+            {m.role === 'user'
+              ? <p style={{ whiteSpace: 'pre-wrap' }}>{m.content}</p>
+              : renderMarkdown(m.content)}
           </AIMessage>
         ))}
-        {typing && <AIMessage role="ai" typing />}
+        {streamingText !== null && (
+          streamingText ? <AIMessage role="ai">{renderMarkdown(streamingText)}</AIMessage> : <AIMessage role="ai" typing />
+        )}
+        {error && (
+          <AIMessage role="ai">
+            <p>⚠️ {error}</p>
+          </AIMessage>
+        )}
       </div>
       <div className="ia-chat__composer">
         <AIComposer
           onSend={send}
+          disabled={sending}
           suggestions={[
+            'Покажи текущее состояние портфеля',
             'Когда ближайшие дивиденды?',
             'Стоит ли ребалансировать?',
-            'Какой у меня налог при продаже LKOH?',
           ]}
         />
       </div>
