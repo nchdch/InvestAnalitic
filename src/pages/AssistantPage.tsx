@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { AIMessage, AIComposer } from '../components'
 import { streamAssistantChat, type AssistantChatMessage } from '../api/client'
 import { renderMarkdown } from '../utils/markdown'
