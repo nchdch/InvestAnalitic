@@ -1,22 +1,45 @@
 import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { KeyRound, LogOut, ShieldCheck, ShieldAlert, Sparkles, Layers, Wallet, TrendingUp, CheckCircle2 } from 'lucide-react'
-import { Card, Button, Input, Switch, Avatar, Badge, StatCard } from '../components'
+import { KeyRound, LogOut, ShieldCheck, ShieldAlert, Sparkles, Layers, Wallet, TrendingUp, CheckCircle2, Users, Plus } from 'lucide-react'
+import { Card, Button, Input, Select, Switch, Avatar, Badge, StatCard } from '../components'
+import type { BadgeTone } from '../components'
+import type { Organization } from '@/types'
+import { OrgMembersModal } from '../components/portfolio/OrgMembersModal'
 import { useAuthStore } from '../store/authStore'
 import { useOrgStore } from '../store/orgStore'
 import { useThemeStore } from '../store/themeStore'
 import { useSettingsStore } from '../store/settingsStore'
+import type { TaxLotMethod } from '../store/settingsStore'
 import { usePortfolio } from '../hooks/usePortfolio'
 import { changePassword, logoutUser } from '../api/auth'
 import { formatRub } from '../utils/format'
 
 const PCT2 = new Intl.NumberFormat('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 
+const ROLE_LABEL: Record<Organization['role'], string> = {
+  owner: 'Владелец',
+  admin: 'Администратор',
+  member: 'Участник',
+}
+
+const ROLE_TONE: Record<Organization['role'], BadgeTone> = {
+  owner: 'accent',
+  admin: 'ai',
+  member: 'neutral',
+}
+
+const TAX_LOT_OPTIONS = [
+  { value: 'FIFO', label: 'FIFO — первым купил, первым продал' },
+  { value: 'LIFO', label: 'LIFO — последним купил, первым продал' },
+]
+
 export function ProfilePage() {
   const user = useAuthStore((s) => s.user)
   const clearAuth = useAuthStore((s) => s.clearAuth)
   const clearOrgs = useOrgStore((s) => s.clearOrgs)
+  const orgs = useOrgStore((s) => s.orgs)
   const navigate = useNavigate()
+  const [orgModal, setOrgModal] = useState<Organization | null>(null)
 
   const theme = useThemeStore((s) => s.theme)
   const toggleTheme = useThemeStore((s) => s.toggleTheme)
@@ -27,6 +50,8 @@ export function ProfilePage() {
   const setConcentrationThreshold = useSettingsStore((s) => s.setConcentrationThreshold)
   const sectorConcentrationThreshold = useSettingsStore((s) => s.sectorConcentrationThreshold)
   const setSectorConcentrationThreshold = useSettingsStore((s) => s.setSectorConcentrationThreshold)
+  const taxLotMethod = useSettingsStore((s) => s.taxLotMethod)
+  const setTaxLotMethod = useSettingsStore((s) => s.setTaxLotMethod)
 
   const { summary, accounts } = usePortfolio()
 
@@ -213,8 +238,48 @@ export function ProfilePage() {
               />
             </div>
           </div>
+
+          <div className="ia-profile-section">
+            <div className="ia-eyebrow" style={{ marginBottom: 10 }}>Налоговый учёт</div>
+            <Select
+              label="Метод списания лотов (FIFO/LIFO)"
+              options={TAX_LOT_OPTIONS}
+              value={taxLotMethod}
+              onChange={(e) => setTaxLotMethod(e.target.value as TaxLotMethod)}
+            />
+            <div className="ia-profile-row__sub" style={{ marginTop: 6 }}>
+              Определяет, какие лоты считаются проданными первыми при расчёте реализованного P&amp;L и НДФЛ
+            </div>
+          </div>
         </Card>
       </div>
+
+      <Card title="Организации" subtitle="Компании, в которых вы состоите, и ваша роль в каждой">
+        {orgs.map((org) => (
+          <div key={org.id} className="ia-org-row">
+            <div>
+              <div style={{ fontWeight: 600 }}>{org.name}</div>
+              <div style={{ fontSize: 'var(--text-sm)', color: 'var(--text-3)' }}>ИНН {org.inn}</div>
+            </div>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              <Badge tone={ROLE_TONE[org.role]} size="sm">{ROLE_LABEL[org.role]}</Badge>
+              {org.status === 'pending' && <Badge tone="warning" size="sm" dot>На рассмотрении</Badge>}
+              {org.status === 'active' && (org.role === 'owner' || org.role === 'admin') && (
+                <Button size="sm" variant="secondary" leftIcon={<Users size={14} />} onClick={() => setOrgModal(org)}>
+                  Участники
+                </Button>
+              )}
+            </div>
+          </div>
+        ))}
+        <div style={{ marginTop: 12 }}>
+          <Button variant="ghost" size="sm" leftIcon={<Plus size={14} />} onClick={() => navigate('/org-setup')}>
+            Добавить организацию
+          </Button>
+        </div>
+      </Card>
+
+      <OrgMembersModal open={!!orgModal} onClose={() => setOrgModal(null)} org={orgModal} />
     </div>
   )
 }

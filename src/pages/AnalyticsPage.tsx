@@ -406,7 +406,7 @@ export function AnalyticsPage() {
       </Card>
 
       <div className="ia-grid-top">
-        <Card title={`Реализованный P&L за ${realized.year} год`} subtitle="FIFO по истории сделок · курсы конвертации текущие">
+        <Card title={`Реализованный P&L за ${realized.year} год`} subtitle={`${realized.method} по истории сделок · курсы конвертации текущие`}>
           {realized.isLoading ? <Spinner /> : realized.lots.length === 0 ? (
             <Empty text={`В ${realized.year} году закрытых позиций не было`} />
           ) : (

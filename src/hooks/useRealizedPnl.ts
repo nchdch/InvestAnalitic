@@ -3,6 +3,8 @@ import type { AccountSummary } from '@/types'
 import { useTradeHistory } from './useTradeHistory'
 import type { TradeHistoryRow } from './useTradeHistory'
 import { getExchangeRate } from '../api/client'
+import { useSettingsStore } from '../store/settingsStore'
+import type { TaxLotMethod } from '../store/settingsStore'
 
 const TAX_BRACKET_THRESHOLD = 5_000_000
 const TAX_RATE_BASE = 0.13
@@ -35,6 +37,8 @@ export interface UseRealizedPnlResult {
   error: string | null
   /** Год, за который считается реализованный P&L (текущий календарный год). */
   year: number
+  /** Метод списания лотов для расчёта себестоимости (настройка пользователя). */
+  method: TaxLotMethod
   lots: RealizedLot[]
   realizedGainsYTD: number
   realizedLossesYTD: number
@@ -54,10 +58,10 @@ function estimateTax(base: number): number {
   return TAX_BRACKET_THRESHOLD * TAX_RATE_BASE + (base - TAX_BRACKET_THRESHOLD) * TAX_RATE_HIGH
 }
 
-interface FifoLot { quantity: number; unitCost: number }
+interface CostLot { quantity: number; unitCost: number }
 
-/** FIFO-расчёт закрытых позиций за год: группирует сделки по счёту и тикеру, сопоставляет продажи с покупками по очереди. */
-function computeFifo(trades: TradeHistoryRow[], year: number): RealizedLot[] {
+/** Расчёт закрытых позиций за год по методу FIFO или LIFO: группирует сделки по счёту и тикеру, сопоставляет продажи с покупками по очереди (FIFO — с начала, LIFO — с конца). */
+function computeLots(trades: TradeHistoryRow[], year: number, method: TaxLotMethod): RealizedLot[] {
   const groups = new Map<string, TradeHistoryRow[]>()
   for (const t of trades) {
     const key = `${t.accountId}__${t.ticker}`
@@ -69,7 +73,7 @@ function computeFifo(trades: TradeHistoryRow[], year: number): RealizedLot[] {
   const lots: RealizedLot[] = []
   for (const groupTrades of groups.values()) {
     const sorted = [...groupTrades].sort((a, b) => a.executedAt.localeCompare(b.executedAt))
-    const queue: FifoLot[] = []
+    const queue: CostLot[] = []
     for (const t of sorted) {
       if (t.side === 'buy') {
         const unitCost = t.quantity > 0 ? (t.price * t.quantity + t.fee) / t.quantity : 0
@@ -80,12 +84,13 @@ function computeFifo(trades: TradeHistoryRow[], year: number): RealizedLot[] {
       let remaining = t.quantity
       let costBasis = 0
       while (remaining > 1e-9 && queue.length > 0) {
-        const lot = queue[0]
+        const idx = method === 'FIFO' ? 0 : queue.length - 1
+        const lot = queue[idx]
         const take = Math.min(lot.quantity, remaining)
         costBasis += take * lot.unitCost
         lot.quantity -= take
         remaining -= take
-        if (lot.quantity <= 1e-9) queue.shift()
+        if (lot.quantity <= 1e-9) queue.splice(idx, 1)
       }
 
       const matchedQty = t.quantity - remaining
@@ -110,11 +115,12 @@ function computeFifo(trades: TradeHistoryRow[], year: number): RealizedLot[] {
   return lots.sort((a, b) => b.closeDate.localeCompare(a.closeDate))
 }
 
-/** Реализованный P&L за текущий год (FIFO) и ориентировочная налоговая оптимизация. */
+/** Реализованный P&L за текущий год (FIFO/LIFO по настройке) и ориентировочная налоговая оптимизация. */
 export function useRealizedPnl(accounts: AccountSummary[]): UseRealizedPnlResult {
   const { rows, isLoading: tradesLoading, error } = useTradeHistory(accounts)
   const [rates, setRates] = useState<Map<string, number>>(new Map())
   const [ratesLoading, setRatesLoading] = useState(true)
+  const method = useSettingsStore((s) => s.taxLotMethod)
   const year = new Date().getFullYear()
 
   const currenciesKey = useMemo(
@@ -137,7 +143,7 @@ export function useRealizedPnl(accounts: AccountSummary[]): UseRealizedPnlResult
     return () => { cancelled = true }
   }, [currenciesKey])
 
-  const lotsNative = useMemo(() => computeFifo(rows, year), [rows, year])
+  const lotsNative = useMemo(() => computeLots(rows, year, method), [rows, year, method])
 
   const lots = useMemo(() => lotsNative.map((l) => {
     const rate = l.currency === 'RUB' ? 1 : (rates.get(l.currency) ?? 1)
@@ -178,6 +184,7 @@ export function useRealizedPnl(accounts: AccountSummary[]): UseRealizedPnlResult
     isLoading: tradesLoading || ratesLoading,
     error,
     year,
+    method,
     lots,
     realizedGainsYTD,
     realizedLossesYTD,

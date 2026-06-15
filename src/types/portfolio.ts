@@ -13,6 +13,8 @@ export interface EquityRow {
   dayChange: number | null
   dayChangePercent: number | null
   portfolioWeight: number
+  /** Доля позиции в суммарной стоимости всех акций портфеля, %. */
+  assetTypeWeight: number
 }
 
 /** Строка таблицы облигаций: позиция + вычисленные поля для UI. */
@@ -36,6 +38,8 @@ export interface BondRow {
   /** Суммарная доходность к вложенным средствам, %. */
   totalPnlPercent: number
   portfolioWeight: number
+  /** Доля позиции в суммарной стоимости всех облигаций портфеля, %. */
+  assetTypeWeight: number
 }
 
 /** Строка денежных средств с эквивалентом в базовой валюте. */

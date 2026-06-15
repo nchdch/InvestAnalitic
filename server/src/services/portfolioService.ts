@@ -209,6 +209,7 @@ export async function getPortfolioSummary(accountIds: string[]) {
           dayChange,
           dayChangePercent: dayChangePct,
           portfolioWeight: 0,
+          assetTypeWeight: 0,
         })
       } else if (p.asset_type === 'bond') {
         const faceValue = p.face_value != null ? Number(p.face_value) : 1000
@@ -280,6 +281,7 @@ export async function getPortfolioSummary(accountIds: string[]) {
           totalPnl: Math.round(totalPnl * 100) / 100,
           totalPnlPercent,
           portfolioWeight: 0,
+          assetTypeWeight: 0,
         })
       }
     }
@@ -324,8 +326,13 @@ export async function getPortfolioSummary(accountIds: string[]) {
   // Второй проход: проставляем веса
   for (const acc of accountSummaries) {
     acc.portfolioWeight = totalValue > 0 ? Math.round((acc.totalValue / totalValue) * 10000) / 100 : 0
-    for (const row of [...acc.equityRows, ...acc.bondRows]) {
+    for (const row of acc.equityRows) {
       row.portfolioWeight = totalValue > 0 ? Math.round((row.currentValue / totalValue) * 10000) / 100 : 0
+      row.assetTypeWeight = totalEquityValue > 0 ? Math.round((row.currentValue / totalEquityValue) * 10000) / 100 : 0
+    }
+    for (const row of acc.bondRows) {
+      row.portfolioWeight = totalValue > 0 ? Math.round((row.currentValue / totalValue) * 10000) / 100 : 0
+      row.assetTypeWeight = totalBondValue > 0 ? Math.round((row.currentValue / totalBondValue) * 10000) / 100 : 0
     }
     for (const row of acc.cashRows) {
       row.accountWeight = acc.totalValue > 0 ? Math.round((row.rubEquivalent / acc.totalValue) * 10000) / 100 : 0

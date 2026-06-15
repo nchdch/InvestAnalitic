@@ -1,4 +1,4 @@
-﻿import { useState, useEffect } from 'react'
+﻿import { useState, useEffect, useRef } from 'react'
 import type { AccountSummary, PortfolioSummary } from '@/types'
 import { getPortfolioSummary } from '../api/client'
 import { usePortfolioStore } from '../store/portfolioStore'
@@ -23,10 +23,14 @@ export function usePortfolio(): UsePortfolioResult {
   const [error, setError] = useState<string | null>(null)
   const [summary, setSummary] = useState<PortfolioSummary | null>(null)
   const [accounts, setAccounts] = useState<AccountSummary[]>([])
+  const loadedOrgRef = useRef<string | undefined>(undefined)
 
   useEffect(() => {
     let cancelled = false
-    setIsLoading(true)
+    // Спиннер показываем только при первой загрузке / смене организации.
+    // Фоновое обновление котировок (bump()) не должно перерисовывать страницу
+    // с нуля — это сбрасывает открытые модалки и несохранённые формы.
+    if (loadedOrgRef.current !== activeOrgId) setIsLoading(true)
     setError(null)
 
     getPortfolioSummary()
@@ -35,6 +39,7 @@ export function usePortfolio(): UsePortfolioResult {
         const { accounts: accs, ...rest } = data
         setSummary(rest as PortfolioSummary)
         setAccounts(accs)
+        loadedOrgRef.current = activeOrgId
       })
       .catch((err: unknown) => {
         if (cancelled) return
