@@ -72,20 +72,22 @@ function SortIcon({ active, direction }: { active: boolean; direction: SortDirec
     : <ChevronDown size={12} style={{ flexShrink: 0 }} />
 }
 
-/** Заголовок таблицы с переключением сортировки по клику. */
-function SortTh({ children, align = 'right', width, active, direction, onClick }: {
+/** Заголовок таблицы с переключением сортировки по клику. title — всплывающее пояснение к колонке. */
+function SortTh({ children, align = 'right', width, active, direction, onClick, title }: {
   children: React.ReactNode
   align?: 'left' | 'right'
   width?: number | string
   active: boolean
   direction: SortDirection
   onClick: () => void
+  title?: string
 }) {
   return (
     <th
       className={align === 'right' ? 'r' : undefined}
       style={{ width, cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}
       onClick={onClick}
+      title={title}
     >
       <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, justifyContent: align === 'right' ? 'flex-end' : 'flex-start' }}>
         {children}
@@ -350,14 +352,14 @@ function SummaryReportTable({ accounts, totalValue, onSelectTicker }: { accounts
       <thead>
         <tr>
           <SortTh align="left" width="24%" {...sortProps('name')}>Название</SortTh>
-          <SortTh {...sortProps('quantity')}>Кол-во</SortTh>
-          <SortTh {...sortProps('currentValue')}>Стоимость</SortTh>
-          <SortTh {...sortProps('investedValue')}>Инвестировано</SortTh>
-          <SortTh {...sortProps('pnl')}>Прибыль, ₽</SortTh>
-          <SortTh {...sortProps('pnlPercent')}>Прибыль, %</SortTh>
-          <SortTh {...sortProps('dayChange')}>Изм. за день</SortTh>
-          <SortTh {...sortProps('assetTypeWeight')}>Доля в категории, %</SortTh>
-          <SortTh {...sortProps('portfolioWeight')}>Доля в портфеле, %</SortTh>
+          <SortTh {...sortProps('quantity')} title="Количество бумаг в позиции">Кол-во</SortTh>
+          <SortTh {...sortProps('currentValue')} title="Текущая рыночная стоимость позиции в рублях">Стоимость</SortTh>
+          <SortTh {...sortProps('investedValue')} title="Сумма вложенных средств в позицию — себестоимость с учётом комиссий">Инвестировано</SortTh>
+          <SortTh {...sortProps('pnl')} title="Нереализованная прибыль или убыток: текущая стоимость минус инвестированная сумма">Прибыль, ₽</SortTh>
+          <SortTh {...sortProps('pnlPercent')} title="Нереализованная прибыль или убыток в процентах от вложенной суммы">Прибыль, %</SortTh>
+          <SortTh {...sortProps('dayChange')} title="Изменение стоимости позиции за последний торговый день">Изм. за день</SortTh>
+          <SortTh {...sortProps('assetTypeWeight')} title="Доля позиции среди всех активов того же типа (акций или облигаций) в портфеле">Доля в категории, %</SortTh>
+          <SortTh {...sortProps('portfolioWeight')} title="Доля позиции в общей стоимости портфеля">Доля в портфеле, %</SortTh>
         </tr>
       </thead>
       <tbody>
@@ -582,15 +584,15 @@ function AllAssetsTable({ accounts, openModal, onDelete }: {
       <thead>
         <tr>
           <SortTh align="left" {...sortProps('ticker')}>Тикер</SortTh>
-          <SortTh align="left" {...sortProps('type')}>Тип</SortTh>
-          <SortTh {...sortProps('quantity')}>Кол-во</SortTh>
-          <SortTh {...sortProps('currentValue')}>Стоимость</SortTh>
-          <SortTh {...sortProps('investedValue')}>Инвестировано</SortTh>
-          <SortTh {...sortProps('pnl')}>Прибыль</SortTh>
-          <SortTh {...sortProps('dayChange')}>Изм. за день</SortTh>
-          <SortTh {...sortProps('assetTypeWeight')}>% от категории</SortTh>
-          <SortTh {...sortProps('portfolioWeight')}>Вес</SortTh>
-          <SortTh align="left" {...sortProps('accountName')}>Портфель</SortTh>
+          <SortTh align="left" {...sortProps('type')} title="Тип актива: акция или облигация">Тип</SortTh>
+          <SortTh {...sortProps('quantity')} title="Количество бумаг в позиции">Кол-во</SortTh>
+          <SortTh {...sortProps('currentValue')} title="Текущая рыночная стоимость позиции в рублях">Стоимость</SortTh>
+          <SortTh {...sortProps('investedValue')} title="Сумма вложенных средств в позицию — себестоимость с учётом комиссий">Инвестировано</SortTh>
+          <SortTh {...sortProps('pnl')} title="Нереализованная прибыль или убыток в рублях и в процентах от вложенной суммы">Прибыль</SortTh>
+          <SortTh {...sortProps('dayChange')} title="Изменение стоимости позиции за последний торговый день">Изм. за день</SortTh>
+          <SortTh {...sortProps('assetTypeWeight')} title="Доля позиции среди всех активов того же типа (акций или облигаций) в портфеле">% от категории</SortTh>
+          <SortTh {...sortProps('portfolioWeight')} title="Доля позиции в общей стоимости портфеля">Вес</SortTh>
+          <SortTh align="left" {...sortProps('accountName')} title="Брокерский счёт, на котором учитывается позиция">Портфель</SortTh>
           <th style={{ width: 48 }}></th>
         </tr>
       </thead>
@@ -678,7 +680,7 @@ function TradeHistoryStats({ accountId, ticker, currency }: { accountId: string;
   )
 }
 
-function EquityDetailPanel({ row, sparkline }: { row: EquityRow; sparkline: number[] }) {
+function EquityDetailPanel({ row }: { row: EquityRow }) {
   const { position } = row
   return (
     <div className="ia-row-detail__inner">
@@ -699,10 +701,6 @@ function EquityDetailPanel({ row, sparkline }: { row: EquityRow; sparkline: numb
       <div className="ia-row-detail__group">
         <div className="ia-row-detail__title">История сделок</div>
         <TradeHistoryStats accountId={position.accountId} ticker={position.ticker} currency={position.currency} />
-      </div>
-      <div className="ia-row-detail__group">
-        <div className="ia-row-detail__title">Динамика цены</div>
-        <Sparkline data={sparkline} />
       </div>
     </div>
   )
@@ -746,13 +744,14 @@ function EquityTableRow({ row, expanded, onToggle, onSelectTicker, sparkline, op
         </td>
         <td className="r ia-num" style={{ color: 'var(--text-3)' }}>{row.assetTypeWeight.toFixed(1)}%</td>
         <td className="r ia-num" style={{ color: 'var(--text-3)' }}>{row.portfolioWeight.toFixed(1)}%</td>
+        <td><Sparkline data={sparkline} /></td>
         <td className="r">
           <RowActionsMenu actions={buildPositionActions(position, openModal, onDelete)} />
         </td>
       </tr>
       {expanded && (
         <tr className="ia-row-detail">
-          <td colSpan={10}><EquityDetailPanel row={row} sparkline={sparkline} /></td>
+          <td colSpan={11}><EquityDetailPanel row={row} /></td>
         </tr>
       )}
     </React.Fragment>
@@ -1013,8 +1012,9 @@ export function PortfolioPage() {
   const totalEquities = filteredAccounts.flatMap((a) => a.equityRows)
 
   return (
-    <div className="ia-screen">
+    <div className="ia-screen-wide">
       {/* Верхний блок: Сводка + ИИ-аналитик */}
+      <div className="ia-screen-inner">
       <div className="ia-grid-top">
         <Card>
           <div className="ia-eyebrow" style={{ marginBottom: 10 }}>
@@ -1080,6 +1080,7 @@ export function PortfolioPage() {
           </div>
         </Card>
       </div>
+      </div>
 
       {/* Таблицы с вкладками */}
       <Card tightBody>
@@ -1119,13 +1120,14 @@ export function PortfolioPage() {
                   <tr>
                     <th style={{ width: 36 }}></th>
                     <SortTh align="left" {...eqSortProps('name')}>Акция</SortTh>
-                    <SortTh {...eqSortProps('quantity')}>Кол-во</SortTh>
-                    <SortTh {...eqSortProps('currentPrice')}>Тек. цена, ₽</SortTh>
-                    <SortTh {...eqSortProps('currentValue')}>Тек. стоимость, ₽</SortTh>
-                    <SortTh {...eqSortProps('pnl')}>Прибыль</SortTh>
-                    <SortTh {...eqSortProps('dayChange')}>Изм. за день</SortTh>
-                    <SortTh {...eqSortProps('assetTypeWeight')}>% от акций</SortTh>
-                    <SortTh {...eqSortProps('portfolioWeight')}>Доля</SortTh>
+                    <SortTh {...eqSortProps('quantity')} title="Количество акций в позиции">Кол-во</SortTh>
+                    <SortTh {...eqSortProps('currentPrice')} title="Текущая рыночная цена одной акции">Тек. цена, ₽</SortTh>
+                    <SortTh {...eqSortProps('currentValue')} title="Текущая рыночная стоимость позиции: количество × текущая цена">Тек. стоимость, ₽</SortTh>
+                    <SortTh {...eqSortProps('pnl')} title="Нереализованная прибыль или убыток в рублях и в процентах от вложенной суммы">Прибыль</SortTh>
+                    <SortTh {...eqSortProps('dayChange')} title="Изменение стоимости позиции за последний торговый день">Изм. за день</SortTh>
+                    <SortTh {...eqSortProps('assetTypeWeight')} title="Доля позиции среди всех акций портфеля">% от акций</SortTh>
+                    <SortTh {...eqSortProps('portfolioWeight')} title="Доля позиции в общей стоимости портфеля">Доля</SortTh>
+                    <th title="График изменения цены за последний период">Динамика</th>
                     <th style={{ width: 48 }}></th>
                   </tr>
                 </thead>
@@ -1155,13 +1157,13 @@ export function PortfolioPage() {
                   <tr>
                     <th style={{ width: 36 }}></th>
                     <SortTh align="left" {...bondSortProps('name')}>Выпуск</SortTh>
-                    <SortTh {...bondSortProps('quantity')}>Кол-во</SortTh>
-                    <SortTh {...bondSortProps('currentValue')}>Тек. стоимость</SortTh>
-                    <SortTh {...bondSortProps('totalPnl')}>Сум. прибыль</SortTh>
-                    <SortTh {...bondSortProps('ytm')}>YTM</SortTh>
-                    <SortTh align="left" {...bondSortProps('maturityDate')}>Погашение</SortTh>
-                    <SortTh {...bondSortProps('assetTypeWeight')}>% от облигаций</SortTh>
-                    <SortTh {...bondSortProps('portfolioWeight')}>Доля</SortTh>
+                    <SortTh {...bondSortProps('quantity')} title="Количество облигаций в позиции, шт.">Кол-во</SortTh>
+                    <SortTh {...bondSortProps('currentValue')} title="Текущая рыночная стоимость позиции, включая накопленный купонный доход (НКД)">Тек. стоимость</SortTh>
+                    <SortTh {...bondSortProps('totalPnl')} title="Совокупная прибыль или убыток: изменение цены тела облигации плюс полученные купоны">Сум. прибыль</SortTh>
+                    <SortTh {...bondSortProps('ytm')} title="Доходность к погашению (YTM) — ориентировочная годовая доходность при удержании облигации до погашения по текущей цене">YTM</SortTh>
+                    <SortTh align="left" {...bondSortProps('maturityDate')} title="Дата погашения или оферты по выпуску">Погашение</SortTh>
+                    <SortTh {...bondSortProps('assetTypeWeight')} title="Доля позиции среди всех облигаций портфеля">% от облигаций</SortTh>
+                    <SortTh {...bondSortProps('portfolioWeight')} title="Доля позиции в общей стоимости портфеля">Доля</SortTh>
                     <th style={{ width: 48 }}></th>
                   </tr>
                 </thead>
@@ -1189,11 +1191,11 @@ export function PortfolioPage() {
                 <thead>
                   <tr>
                     <SortTh align="left" {...cashSortProps('currency')}>Валюта</SortTh>
-                    <SortTh {...cashSortProps('amount')}>Сумма</SortTh>
-                    <SortTh {...cashSortProps('rate')}>Тек. цена, ₽</SortTh>
-                    <SortTh {...cashSortProps('rubEquivalent')}>Тек. стоимость, ₽</SortTh>
-                    <SortTh {...cashSortProps('portfolioWeight')}>Доля</SortTh>
-                    <th>Динамика</th>
+                    <SortTh {...cashSortProps('amount')} title="Остаток денежных средств в указанной валюте">Сумма</SortTh>
+                    <SortTh {...cashSortProps('rate')} title="Курс валюты к рублю на текущую дату">Тек. цена, ₽</SortTh>
+                    <SortTh {...cashSortProps('rubEquivalent')} title="Рублёвый эквивалент остатка по текущему курсу">Тек. стоимость, ₽</SortTh>
+                    <SortTh {...cashSortProps('portfolioWeight')} title="Доля остатка в общей стоимости портфеля">Доля</SortTh>
+                    <th title="Изменение курса валюты за последний период">Динамика</th>
                     <th style={{ width: 48 }}></th>
                   </tr>
                 </thead>
