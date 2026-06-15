@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { Card, StatCard, PnLValue, Badge, AllocationBar, Avatar, Sparkline, Tabs, Button, IconButton, RowActionsMenu } from '../components'
 import {
-  Sparkles, Download, PackageOpen, ChevronDown, ChevronRight,
+  Sparkles, Download, PackageOpen, ChevronDown, ChevronUp, ChevronsUpDown, ChevronRight,
   Receipt, StickyNote, Plus, Minus, Coins, Pencil, ArrowRightLeft, Trash2,
   ArrowDownToLine, ArrowUpFromLine,
 } from 'lucide-react'
@@ -27,6 +27,170 @@ import type { RowAction } from '../components'
 const RUB = new Intl.NumberFormat('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 const NUM0 = new Intl.NumberFormat('ru-RU')
 const money = (v: number) => RUB.format(v) + ' ₽'
+
+// ─── Сортировка таблиц ─────────────────────────────────────────────────────────
+
+type SortDirection = 'asc' | 'desc'
+
+interface TableSort<K extends string> {
+  key: K | null
+  direction: SortDirection
+}
+
+/** Состояние сортировки таблицы: клик по той же колонке переключает направление, по новой — задаёт убывание. */
+function useTableSort<K extends string>() {
+  const [sort, setSort] = useState<TableSort<K>>({ key: null, direction: 'desc' })
+  const toggle = (key: K) => {
+    setSort((prev) => prev.key === key
+      ? { key, direction: prev.direction === 'desc' ? 'asc' : 'desc' }
+      : { key, direction: 'desc' })
+  }
+  return { sort, toggle }
+}
+
+function sortRows<T, K extends string>(rows: T[], sort: TableSort<K>, getValue: (row: T, key: K) => number | string): T[] {
+  if (!sort.key) return rows
+  const key = sort.key
+  const dir = sort.direction === 'asc' ? 1 : -1
+  return [...rows].sort((a, b) => {
+    const av = getValue(a, key)
+    const bv = getValue(b, key)
+    let cmp: number
+    if (typeof av === 'number' && typeof bv === 'number') {
+      cmp = av - bv
+    } else {
+      cmp = String(av).localeCompare(String(bv), 'ru')
+    }
+    return cmp * dir
+  })
+}
+
+function SortIcon({ active, direction }: { active: boolean; direction: SortDirection }) {
+  if (!active) return <ChevronsUpDown size={12} style={{ opacity: 0.35, flexShrink: 0 }} />
+  return direction === 'asc'
+    ? <ChevronUp size={12} style={{ flexShrink: 0 }} />
+    : <ChevronDown size={12} style={{ flexShrink: 0 }} />
+}
+
+/** Заголовок таблицы с переключением сортировки по клику. */
+function SortTh({ children, align = 'right', width, active, direction, onClick }: {
+  children: React.ReactNode
+  align?: 'left' | 'right'
+  width?: number | string
+  active: boolean
+  direction: SortDirection
+  onClick: () => void
+}) {
+  return (
+    <th
+      className={align === 'right' ? 'r' : undefined}
+      style={{ width, cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}
+      onClick={onClick}
+    >
+      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, justifyContent: align === 'right' ? 'flex-end' : 'flex-start' }}>
+        {children}
+        <SortIcon active={active} direction={direction} />
+      </span>
+    </th>
+  )
+}
+
+function makeSortProps<K extends string>(sort: TableSort<K>, toggle: (key: K) => void) {
+  return (key: K) => ({
+    active: sort.key === key,
+    direction: sort.direction,
+    onClick: () => toggle(key),
+  })
+}
+
+// Сводный отчёт: сортировка строк-позиций внутри групп «Акции» / «Облигации»
+type SummarySortKey = 'name' | 'quantity' | 'currentValue' | 'investedValue' | 'pnl' | 'pnlPercent' | 'dayChange' | 'assetTypeWeight' | 'portfolioWeight'
+
+function summaryRowSortValue(row: EquityRow | BondRow, key: SummarySortKey): number | string {
+  switch (key) {
+    case 'name': return row.position.name ?? row.position.ticker
+    case 'quantity': return row.position.quantity
+    case 'currentValue': return row.currentValue
+    case 'investedValue': return row.investedValue
+    case 'pnl': return row.unrealizedPnl
+    case 'pnlPercent': return row.unrealizedPnlPercent
+    case 'dayChange': return row.dayChange ?? -Infinity
+    case 'assetTypeWeight': return row.assetTypeWeight
+    case 'portfolioWeight': return row.portfolioWeight
+    default: return 0
+  }
+}
+
+// «Все активы»: общая строка по акциям/облигациям с привязкой к счёту
+type AllAssetsRow =
+  | (EquityRow & { accountName: string; type: 'equity' })
+  | (BondRow & { accountName: string; type: 'bond' })
+
+type AllAssetsSortKey = 'ticker' | 'type' | 'quantity' | 'currentValue' | 'investedValue' | 'pnl' | 'dayChange' | 'assetTypeWeight' | 'portfolioWeight' | 'accountName'
+
+function allAssetsSortValue(row: AllAssetsRow, key: AllAssetsSortKey): number | string {
+  switch (key) {
+    case 'ticker': return row.position.ticker
+    case 'type': return row.type
+    case 'quantity': return row.position.quantity
+    case 'currentValue': return row.currentValue
+    case 'investedValue': return row.investedValue
+    case 'pnl': return row.unrealizedPnl
+    case 'dayChange': return row.dayChange ?? -Infinity
+    case 'assetTypeWeight': return row.assetTypeWeight
+    case 'portfolioWeight': return row.portfolioWeight
+    case 'accountName': return row.accountName
+    default: return 0
+  }
+}
+
+// Вкладка «Акции»
+type EqSortKey = 'name' | 'quantity' | 'currentPrice' | 'currentValue' | 'pnl' | 'dayChange' | 'assetTypeWeight' | 'portfolioWeight'
+
+function equitySortValue(row: EquityRow, key: EqSortKey): number | string {
+  switch (key) {
+    case 'name': return row.position.name ?? row.position.ticker
+    case 'quantity': return row.position.quantity
+    case 'currentPrice': return row.currentPrice
+    case 'currentValue': return row.currentValue
+    case 'pnl': return row.unrealizedPnl
+    case 'dayChange': return row.dayChange ?? -Infinity
+    case 'assetTypeWeight': return row.assetTypeWeight
+    case 'portfolioWeight': return row.portfolioWeight
+    default: return 0
+  }
+}
+
+// Вкладка «Облигации»
+type BondSortKey = 'name' | 'quantity' | 'currentValue' | 'totalPnl' | 'ytm' | 'maturityDate' | 'assetTypeWeight' | 'portfolioWeight'
+
+function bondSortValue(row: BondRow, key: BondSortKey): number | string {
+  switch (key) {
+    case 'name': return row.position.name ?? row.position.ticker
+    case 'quantity': return row.position.quantity
+    case 'currentValue': return row.currentValue
+    case 'totalPnl': return row.totalPnl
+    case 'ytm': return row.ytm ?? -Infinity
+    case 'maturityDate': return row.position.maturityDate
+    case 'assetTypeWeight': return row.assetTypeWeight
+    case 'portfolioWeight': return row.portfolioWeight
+    default: return 0
+  }
+}
+
+// Вкладка «Деньги»
+type CashSortKey = 'currency' | 'amount' | 'rate' | 'rubEquivalent' | 'portfolioWeight'
+
+function cashSortValue(row: CashRow, key: CashSortKey): number | string {
+  switch (key) {
+    case 'currency': return row.balance.currency
+    case 'amount': return row.balance.amount
+    case 'rate': return row.rate
+    case 'rubEquivalent': return row.rubEquivalent
+    case 'portfolioWeight': return row.portfolioWeight
+    default: return 0
+  }
+}
 
 // ─── Контекстное меню действий по активу ──────────────────────────────────────
 
@@ -178,21 +342,22 @@ function SummaryReportTable({ accounts, totalValue, onSelectTicker }: { accounts
   const toggleType = (key: string) =>
     setExpandedTypes((prev) => { const s = new Set(prev); s.has(key) ? s.delete(key) : s.add(key); return s })
 
-  const R: React.CSSProperties = { textAlign: 'right', whiteSpace: 'nowrap' }
+  const { sort, toggle: toggleSort } = useTableSort<SummarySortKey>()
+  const sortProps = makeSortProps(sort, toggleSort)
 
   return (
     <table className="ia-table ia-table--compact">
       <thead>
         <tr>
-          <th style={{ width: '24%' }}>Название</th>
-          <th style={R}>Кол-во</th>
-          <th style={R}>Стоимость</th>
-          <th style={R}>Инвестировано</th>
-          <th style={R}>Прибыль, ₽</th>
-          <th style={R}>Прибыль, %</th>
-          <th style={R}>Изм. за день</th>
-          <th style={R}>Доля в категории, %</th>
-          <th style={R}>Доля в портфеле, %</th>
+          <SortTh align="left" width="24%" {...sortProps('name')}>Название</SortTh>
+          <SortTh {...sortProps('quantity')}>Кол-во</SortTh>
+          <SortTh {...sortProps('currentValue')}>Стоимость</SortTh>
+          <SortTh {...sortProps('investedValue')}>Инвестировано</SortTh>
+          <SortTh {...sortProps('pnl')}>Прибыль, ₽</SortTh>
+          <SortTh {...sortProps('pnlPercent')}>Прибыль, %</SortTh>
+          <SortTh {...sortProps('dayChange')}>Изм. за день</SortTh>
+          <SortTh {...sortProps('assetTypeWeight')}>Доля в категории, %</SortTh>
+          <SortTh {...sortProps('portfolioWeight')}>Доля в портфеле, %</SortTh>
         </tr>
       </thead>
       <tbody>
@@ -270,7 +435,7 @@ function SummaryReportTable({ accounts, totalValue, onSelectTicker }: { accounts
               )}
 
               {/* ── Уровень 3: Каждая акция ── */}
-              {accOpen && eqOpen && acc.equityRows.map((row) => (
+              {accOpen && eqOpen && sortRows(acc.equityRows, sort, summaryRowSortValue).map((row) => (
                 <tr
                   key={row.position.id}
                   style={{ opacity: 0.95, cursor: 'pointer' }}
@@ -335,7 +500,7 @@ function SummaryReportTable({ accounts, totalValue, onSelectTicker }: { accounts
               )}
 
               {/* ── Уровень 3: Каждая облигация ── */}
-              {accOpen && bondOpen && acc.bondRows.map((row) => (
+              {accOpen && bondOpen && sortRows(acc.bondRows, sort, summaryRowSortValue).map((row) => (
                 <tr key={row.position.id} style={{ opacity: 0.95 }}>
                   <td style={{ paddingLeft: 56 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -396,34 +561,41 @@ function AllAssetsTable({ accounts, openModal, onDelete }: {
   openModal: (m: ActiveModal) => void
   onDelete: (position: Position) => void
 }) {
-  const allRows = accounts.flatMap((acc) => [
+  const allRows: AllAssetsRow[] = accounts.flatMap((acc) => [
     ...acc.equityRows.map((r) => ({ ...r, accountName: acc.name, type: 'equity' as const })),
     ...acc.bondRows.map((r) => ({ ...r, accountName: acc.name, type: 'bond' as const })),
-  ]).sort((a, b) => b.currentValue - a.currentValue)
+  ])
+
+  const { sort, toggle: toggleSort } = useTableSort<AllAssetsSortKey>()
+  const sortProps = makeSortProps(sort, toggleSort)
 
   if (allRows.length === 0) {
     return <div style={{ padding: '32px', textAlign: 'center', color: 'var(--text-3)', fontSize: 'var(--text-sm)' }}>Нет позиций</div>
   }
 
+  const sortedRows = sort.key
+    ? sortRows(allRows, sort, allAssetsSortValue)
+    : [...allRows].sort((a, b) => b.currentValue - a.currentValue)
+
   return (
     <table className="ia-table ia-table--compact">
       <thead>
         <tr>
-          <th>Тикер</th>
-          <th>Тип</th>
-          <th style={{ textAlign: 'right' }}>Кол-во</th>
-          <th style={{ textAlign: 'right' }}>Стоимость</th>
-          <th style={{ textAlign: 'right' }}>Инвестировано</th>
-          <th style={{ textAlign: 'right' }}>Прибыль</th>
-          <th style={{ textAlign: 'right' }}>Изм. за день</th>
-          <th style={{ textAlign: 'right' }}>% от категории</th>
-          <th style={{ textAlign: 'right' }}>Вес</th>
-          <th>Портфель</th>
+          <SortTh align="left" {...sortProps('ticker')}>Тикер</SortTh>
+          <SortTh align="left" {...sortProps('type')}>Тип</SortTh>
+          <SortTh {...sortProps('quantity')}>Кол-во</SortTh>
+          <SortTh {...sortProps('currentValue')}>Стоимость</SortTh>
+          <SortTh {...sortProps('investedValue')}>Инвестировано</SortTh>
+          <SortTh {...sortProps('pnl')}>Прибыль</SortTh>
+          <SortTh {...sortProps('dayChange')}>Изм. за день</SortTh>
+          <SortTh {...sortProps('assetTypeWeight')}>% от категории</SortTh>
+          <SortTh {...sortProps('portfolioWeight')}>Вес</SortTh>
+          <SortTh align="left" {...sortProps('accountName')}>Портфель</SortTh>
           <th style={{ width: 48 }}></th>
         </tr>
       </thead>
       <tbody>
-        {allRows.map((row) => {
+        {sortedRows.map((row) => {
           const pnl = row.type === 'equity' ? row.unrealizedPnl : (row as { unrealizedPnl: number }).unrealizedPnl
           const pnlPct = row.unrealizedPnlPercent
           return (
@@ -735,6 +907,13 @@ export function PortfolioPage() {
   const [activeModal, setActiveModal] = useState<ActiveModal | null>(null)
   const fetchedTickersRef = useRef<Set<string>>(new Set())
 
+  const { sort: eqSort, toggle: toggleEqSort } = useTableSort<EqSortKey>()
+  const eqSortProps = makeSortProps(eqSort, toggleEqSort)
+  const { sort: bondSort, toggle: toggleBondSort } = useTableSort<BondSortKey>()
+  const bondSortProps = makeSortProps(bondSort, toggleBondSort)
+  const { sort: cashSort, toggle: toggleCashSort } = useTableSort<CashSortKey>()
+  const cashSortProps = makeSortProps(cashSort, toggleCashSort)
+
   function toggleRow(id: string) {
     setExpandedRows((prev) => {
       const next = new Set(prev)
@@ -939,19 +1118,19 @@ export function PortfolioPage() {
                 <thead>
                   <tr>
                     <th style={{ width: 36 }}></th>
-                    <th>Акция</th>
-                    <th className="r">Кол-во</th>
-                    <th className="r">Тек. цена, ₽</th>
-                    <th className="r">Тек. стоимость, ₽</th>
-                    <th className="r">Прибыль</th>
-                    <th className="r">Изм. за день</th>
-                    <th className="r">% от акций</th>
-                    <th className="r">Доля</th>
+                    <SortTh align="left" {...eqSortProps('name')}>Акция</SortTh>
+                    <SortTh {...eqSortProps('quantity')}>Кол-во</SortTh>
+                    <SortTh {...eqSortProps('currentPrice')}>Тек. цена, ₽</SortTh>
+                    <SortTh {...eqSortProps('currentValue')}>Тек. стоимость, ₽</SortTh>
+                    <SortTh {...eqSortProps('pnl')}>Прибыль</SortTh>
+                    <SortTh {...eqSortProps('dayChange')}>Изм. за день</SortTh>
+                    <SortTh {...eqSortProps('assetTypeWeight')}>% от акций</SortTh>
+                    <SortTh {...eqSortProps('portfolioWeight')}>Доля</SortTh>
                     <th style={{ width: 48 }}></th>
                   </tr>
                 </thead>
                 <tbody>
-                  {allEquities.map((row) => (
+                  {sortRows(allEquities, eqSort, equitySortValue).map((row) => (
                     <EquityTableRow
                       key={row.position.id}
                       row={row}
@@ -975,19 +1154,19 @@ export function PortfolioPage() {
                 <thead>
                   <tr>
                     <th style={{ width: 36 }}></th>
-                    <th>Выпуск</th>
-                    <th className="r">Кол-во</th>
-                    <th className="r">Тек. стоимость</th>
-                    <th className="r">Сум. прибыль</th>
-                    <th className="r">YTM</th>
-                    <th>Погашение</th>
-                    <th className="r">% от облигаций</th>
-                    <th className="r">Доля</th>
+                    <SortTh align="left" {...bondSortProps('name')}>Выпуск</SortTh>
+                    <SortTh {...bondSortProps('quantity')}>Кол-во</SortTh>
+                    <SortTh {...bondSortProps('currentValue')}>Тек. стоимость</SortTh>
+                    <SortTh {...bondSortProps('totalPnl')}>Сум. прибыль</SortTh>
+                    <SortTh {...bondSortProps('ytm')}>YTM</SortTh>
+                    <SortTh align="left" {...bondSortProps('maturityDate')}>Погашение</SortTh>
+                    <SortTh {...bondSortProps('assetTypeWeight')}>% от облигаций</SortTh>
+                    <SortTh {...bondSortProps('portfolioWeight')}>Доля</SortTh>
                     <th style={{ width: 48 }}></th>
                   </tr>
                 </thead>
                 <tbody>
-                  {allBonds.map((row) => (
+                  {sortRows(allBonds, bondSort, bondSortValue).map((row) => (
                     <BondTableRow
                       key={row.position.id}
                       row={row}
@@ -1009,17 +1188,17 @@ export function PortfolioPage() {
             : <table className="ia-table ia-table--compact">
                 <thead>
                   <tr>
-                    <th>Валюта</th>
-                    <th className="r">Сумма</th>
-                    <th className="r">Тек. цена, ₽</th>
-                    <th className="r">Тек. стоимость, ₽</th>
-                    <th className="r">Доля</th>
+                    <SortTh align="left" {...cashSortProps('currency')}>Валюта</SortTh>
+                    <SortTh {...cashSortProps('amount')}>Сумма</SortTh>
+                    <SortTh {...cashSortProps('rate')}>Тек. цена, ₽</SortTh>
+                    <SortTh {...cashSortProps('rubEquivalent')}>Тек. стоимость, ₽</SortTh>
+                    <SortTh {...cashSortProps('portfolioWeight')}>Доля</SortTh>
                     <th>Динамика</th>
                     <th style={{ width: 48 }}></th>
                   </tr>
                 </thead>
                 <tbody>
-                  {allCash.map((row, i) => (
+                  {sortRows(allCash, cashSort, cashSortValue).map((row, i) => (
                     <tr key={i}>
                       <td>
                         <div className="ia-cell-tk">
