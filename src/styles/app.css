@@ -205,6 +205,8 @@
 .ia-chat__feed-inner { max-width: 760px; margin: 0 auto; display: flex; flex-direction: column; gap: 20px; }
 .ia-chat__footer { flex-shrink: 0; padding: 8px 40px 24px; border-top: 1px solid var(--divider); background: var(--surface-app); }
 .ia-chat__footer-inner { max-width: 760px; margin: 0 auto; }
+.ia-chat__stop { display: flex; align-items: center; gap: 7px; margin: 0 auto 10px; padding: 6px 18px; background: none; border: 1px solid var(--border-2); border-radius: var(--radius-pill); font-size: var(--text-sm); color: var(--text-2); font-family: inherit; cursor: pointer; transition: background var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out); }
+.ia-chat__stop:hover { background: var(--surface-sunken); color: var(--text-1); }
 
 /* ---- Rebalance ---- */
 .ia-grid-reb { display: grid; grid-template-columns: 1.2fr 1fr; gap: 20px; align-items: start; }

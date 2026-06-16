@@ -251,12 +251,14 @@ export function deleteConversation(id: string): Promise<void> {
 
 /**
  * Стримит ответ ИИ-ассистента по SSE. Возвращает conversationId беседы (новой или существующей).
+ * onConversationId вызывается сразу после получения заголовков (до начала стрима).
  */
 export async function streamAssistantChat(
   messages: AssistantChatMessage[],
   onDelta: (text: string) => void,
   signal?: AbortSignal,
   conversationId?: string,
+  onConversationId?: (id: string) => void,
 ): Promise<string> {
   const orgId = activeOrgId()
   const q = orgId ? `?orgId=${orgId}` : ''
@@ -274,6 +276,7 @@ export async function streamAssistantChat(
   }
 
   const returnedConvId = response.headers.get('X-Conversation-Id') ?? conversationId ?? ''
+  if (returnedConvId) onConversationId?.(returnedConvId)
 
   const reader = response.body.getReader()
   const decoder = new TextDecoder()

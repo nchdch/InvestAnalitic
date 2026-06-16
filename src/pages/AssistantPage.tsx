@@ -76,6 +76,8 @@ export function AssistantPage() {
     if (activeConvId === id) newChat()
   }
 
+  const stop = () => abortRef.current?.abort()
+
   const send = async (text: string) => {
     setError(null)
     const history: AssistantChatMessage[] = [...messages, { role: 'user', content: text }]
@@ -87,6 +89,21 @@ export function AssistantPage() {
     const controller = new AbortController()
     abortRef.current = controller
     let acc = ''
+    const isNewChat = !activeConvId
+
+    const handleConversationId = (convId: string) => {
+      if (isNewChat && convId) {
+        setActiveConvId(convId)
+        const optimistic: Conversation = {
+          id: convId,
+          title: text.slice(0, 60) || 'Новый чат',
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+          preview: null,
+        }
+        setConversations((cs) => [optimistic, ...cs.filter((c) => c.id !== convId)])
+      }
+    }
 
     try {
       const convId = await streamAssistantChat(
@@ -94,13 +111,17 @@ export function AssistantPage() {
         (delta) => { acc += delta; setStreamingText(acc); scrollToBottom() },
         controller.signal,
         activeConvId ?? undefined,
+        handleConversationId,
       )
       setMessages((m) => [...m, { role: 'assistant', content: acc }])
       if (convId && convId !== activeConvId) setActiveConvId(convId)
       getConversations().then(setConversations).catch(() => {})
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Не удалось получить ответ ассистента')
+      if ((err as Error)?.name !== 'AbortError') {
+        setError(err instanceof Error ? err.message : 'Не удалось получить ответ ассистента')
+      }
       if (acc) setMessages((m) => [...m, { role: 'assistant', content: acc }])
+      getConversations().then(setConversations).catch(() => {})
     } finally {
       setStreamingText(null)
       setSending(false)
@@ -164,6 +185,12 @@ export function AssistantPage() {
 
         <div className="ia-chat__footer">
           <div className="ia-chat__footer-inner">
+            {sending && (
+              <button className="ia-chat__stop" onClick={stop}>
+                <svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor"><rect width="12" height="12" rx="2"/></svg>
+                Остановить
+              </button>
+            )}
             <AIComposer
               onSend={send}
               disabled={sending}
