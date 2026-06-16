@@ -229,22 +229,42 @@ export interface AssistantChatMessage {
   content: string
 }
 
+export interface Conversation {
+  id: string
+  title: string
+  created_at: string
+  updated_at: string
+  preview: string | null
+}
+
+export function getConversations(): Promise<Conversation[]> {
+  return request<Conversation[]>('/assistant/conversations')
+}
+
+export function getConversationMessages(id: string): Promise<AssistantChatMessage[]> {
+  return request<AssistantChatMessage[]>(`/assistant/conversations/${id}/messages`)
+}
+
+export function deleteConversation(id: string): Promise<void> {
+  return request<void>(`/assistant/conversations/${id}`, { method: 'DELETE' })
+}
+
 /**
- * Стримит ответ ИИ-ассистента по SSE: messages — вся история диалога (включая новое сообщение
- * пользователя последним), onDelta вызывается для каждого фрагмента текста ответа.
+ * Стримит ответ ИИ-ассистента по SSE. Возвращает conversationId беседы (новой или существующей).
  */
 export async function streamAssistantChat(
   messages: AssistantChatMessage[],
   onDelta: (text: string) => void,
   signal?: AbortSignal,
-): Promise<void> {
+  conversationId?: string,
+): Promise<string> {
   const orgId = activeOrgId()
   const q = orgId ? `?orgId=${orgId}` : ''
   const response = await fetch(`/api/assistant/chat${q}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...authHeader() },
     credentials: 'include',
-    body: JSON.stringify({ messages }),
+    body: JSON.stringify({ messages, conversationId }),
     signal,
   })
 
@@ -252,6 +272,8 @@ export async function streamAssistantChat(
     const body = await response.json().catch(() => ({})) as { error?: string }
     throw new Error(body.error ?? `API /assistant/chat responded with ${response.status}`)
   }
+
+  const returnedConvId = response.headers.get('X-Conversation-Id') ?? conversationId ?? ''
 
   const reader = response.body.getReader()
   const decoder = new TextDecoder()
@@ -275,9 +297,10 @@ export async function streamAssistantChat(
       const data = JSON.parse(payload) as { text?: string; error?: string }
       if (eventName === 'delta' && data.text) onDelta(data.text)
       else if (eventName === 'error') throw new Error(data.error ?? 'Ошибка ассистента')
-      else if (eventName === 'done') return
+      else if (eventName === 'done') return returnedConvId
       eventName = 'message'
     }
   }
+  return returnedConvId
 }
 
