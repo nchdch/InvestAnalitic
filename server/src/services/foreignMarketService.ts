@@ -143,10 +143,9 @@ export interface ForeignSecurityResult {
 }
 
 const FOREIGN_TYPES = new Set(['Common Stock', 'ETP', 'ETF', 'REIT'])
-// Только обычные биржевые тикеры (1-5 латинских букв) — отсекает BDR/ADR-дубли вида AAPL34, неактивные/служебные коды с точками и т.п.
-const TICKER_RE = /^[A-Z]{1,5}$/
+const TICKER_RE = /^[A-Z0-9._-]{1,12}$/
 
-/** Поиск иностранных акций и ETF (NASDAQ/NYSE) через Finnhub. Без дублей по тикеру. */
+/** Поиск иностранных акций и ETF через Finnhub. */
 export async function searchForeignSecurities(q: string): Promise<ForeignSecurityResult[]> {
   const key = apiKey()
   if (!key) return []
@@ -178,6 +177,60 @@ export async function searchForeignSecurities(q: string): Promise<ForeignSecurit
       if (unique.length >= 8) break
     }
     return unique
+  } catch {
+    return []
+  }
+}
+
+interface YahooSearchQuote {
+  symbol?: string
+  shortname?: string
+  longname?: string
+  quoteType?: string
+  exchange?: string
+  typeDisp?: string
+}
+
+interface YahooSearchResponse {
+  quotes?: YahooSearchQuote[]
+}
+
+const YAHOO_QUOTE_TYPES = new Set(['EQUITY', 'ETF', 'MUTUALFUND', 'FUTURE', 'INDEX'])
+
+/** Поиск через Yahoo Finance — покрывает делистованные бумаги и всё глобальное. */
+export async function searchYahooSecurities(q: string): Promise<ForeignSecurityResult[]> {
+  try {
+    const url = `https://query1.finance.yahoo.com/v1/finance/search?q=${encodeURIComponent(q)}&quotesCount=12&newsCount=0&enableFuzzyQuery=false`
+    const res = await fetch(url, {
+      headers: { 'User-Agent': YAHOO_USER_AGENT },
+      signal: AbortSignal.timeout(5000),
+    })
+    if (!res.ok) return []
+    const body = (await res.json()) as YahooSearchResponse
+    const quotes = body.quotes ?? []
+
+    const seen = new Set<string>()
+    const results: ForeignSecurityResult[] = []
+    for (const q of quotes) {
+      const symbol = q.symbol
+      if (!symbol || !YAHOO_QUOTE_TYPES.has(q.quoteType ?? '')) continue
+      if (seen.has(symbol)) continue
+      seen.add(symbol)
+      const assetType: 'equity' | 'bond' | null =
+        q.quoteType === 'EQUITY' || q.quoteType === 'ETF' ? 'equity' : null
+      results.push({
+        ticker: symbol,
+        shortName: q.shortname ?? q.longname ?? symbol,
+        fullName: q.longname ?? q.shortname ?? symbol,
+        isin: null,
+        assetType,
+        currency: 'USD',
+        exchange: q.exchange ?? 'NASDAQ',
+        isTraded: true,
+      })
+      if (results.length >= 10) break
+    }
+    return results
   } catch {
     return []
   }

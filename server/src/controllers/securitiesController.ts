@@ -2,7 +2,7 @@ import type { Request, Response } from 'express'
 import { fetchRubRate } from '../services/fxService.js'
 import { fetchPriceHistory } from '../services/marketHistoryService.js'
 import { fetchMoexPrice } from '../services/moexService.js'
-import { fetchForeignQuote, fetchForeignPriceHistory, fetchYahooPriceHistory, searchForeignSecurities } from '../services/foreignMarketService.js'
+import { fetchForeignQuote, fetchForeignPriceHistory, fetchYahooPriceHistory, searchForeignSecurities, searchYahooSecurities } from '../services/foreignMarketService.js'
 
 interface MoexResponse {
   securities: {
@@ -220,7 +220,7 @@ async function searchMoex(q: string): Promise<SecurityResult[]> {
     .slice(0, 12)
 }
 
-/** Поиск инструментов: сначала MOEX, затем иностранные акции/ETF (NASDAQ, NYSE) через Finnhub. */
+/** Поиск инструментов: MOEX → Finnhub → Yahoo Finance. Yahoo покрывает делистованные и глобальные бумаги. */
 export async function search(req: Request, res: Response): Promise<void> {
   const q = (req.query.q as string | undefined)?.trim()
   if (!q || q.length < 2) {
@@ -228,18 +228,19 @@ export async function search(req: Request, res: Response): Promise<void> {
     return
   }
 
-  const [moexResults, foreignResults] = await Promise.all([
+  const [moexResults, finnhubResults, yahooResults] = await Promise.all([
     searchMoex(q).catch((err: unknown) => {
       console.error('moex search error:', err)
       return [] as SecurityResult[]
     }),
-    searchForeignSecurities(q),
+    searchForeignSecurities(q).catch(() => [] as SecurityResult[]),
+    searchYahooSecurities(q).catch(() => [] as SecurityResult[]),
   ])
 
-  // MOEX-результаты в приоритете; иностранные добавляем только если такого тикера ещё нет
+  // Приоритет: MOEX > Finnhub > Yahoo; без дублей по тикеру
   const seen = new Set<string>()
   const merged: SecurityResult[] = []
-  for (const r of [...moexResults, ...foreignResults]) {
+  for (const r of [...moexResults, ...finnhubResults, ...yahooResults]) {
     const key = r.ticker.toUpperCase()
     if (seen.has(key)) continue
     seen.add(key)
