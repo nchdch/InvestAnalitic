@@ -12,6 +12,12 @@ import { renderMarkdown } from '../utils/markdown'
 
 const WELCOME = 'Привет! Я твой инвестиционный ИИ-аналитик. Знаю твой портфель досконально — спрашивай или добавляй сделки в любой форме.'
 
+const SUGGESTIONS = [
+  'Покажи текущее состояние портфеля',
+  'Когда ближайшие дивиденды?',
+  'Стоит ли ребалансировать?',
+]
+
 export function AssistantPage() {
   const [conversations, setConversations] = useState<Conversation[]>([])
   const [activeConvId, setActiveConvId] = useState<string | null>(null)
@@ -29,8 +35,12 @@ export function AssistantPage() {
     getConversations().then(setConversations).catch(() => {})
   }, [])
 
-  const scrollToBottom = () => {
-    setTimeout(() => feedRef.current?.lastElementChild?.scrollIntoView({ behavior: 'smooth' }), 50)
+  const scrollToBottom = (smooth = true) => {
+    setTimeout(() => {
+      if (feedRef.current) {
+        feedRef.current.scrollTo({ top: feedRef.current.scrollHeight, behavior: smooth ? 'smooth' : 'instant' as ScrollBehavior })
+      }
+    }, 40)
   }
 
   const loadConversation = useCallback(async (id: string) => {
@@ -43,7 +53,7 @@ export function AssistantPage() {
     try {
       const msgs = await getConversationMessages(id)
       setMessages(msgs as AssistantChatMessage[])
-      setTimeout(() => feedRef.current?.scrollTo({ top: feedRef.current.scrollHeight }), 50)
+      scrollToBottom(false)
     } catch {
       setError('Не удалось загрузить историю переписки')
     } finally {
@@ -59,7 +69,7 @@ export function AssistantPage() {
     setError(null)
   }
 
-  const handleDeleteConversation = async (e: React.MouseEvent, id: string) => {
+  const handleDelete = async (e: React.MouseEvent, id: string) => {
     e.stopPropagation()
     await deleteConversation(id).catch(() => {})
     setConversations((cs) => cs.filter((c) => c.id !== id))
@@ -98,11 +108,17 @@ export function AssistantPage() {
     }
   }
 
+  const isEmpty = messages.length === 0 && !loadingHistory
+
   return (
     <div className="ia-chat-layout">
+      {/* Sidebar */}
       <aside className="ia-chat-sidebar">
         <div className="ia-chat-sidebar__header">
-          <button className="ia-chat-sidebar__new" onClick={newChat}>+ Новый чат</button>
+          <button className="ia-chat-sidebar__new" onClick={newChat}>
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 1v12M1 7h12" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/></svg>
+            Новый чат
+          </button>
         </div>
         <div className="ia-chat-sidebar__list">
           {conversations.map((c) => (
@@ -113,50 +129,47 @@ export function AssistantPage() {
             >
               <span className="ia-chat-sidebar__item-title">{c.title}</span>
               {c.preview && <span className="ia-chat-sidebar__item-preview">{c.preview}</span>}
-              <button
-                className="ia-chat-sidebar__item-del"
-                onClick={(e) => handleDeleteConversation(e, c.id)}
-                title="Удалить чат"
-              >×</button>
+              <button className="ia-chat-sidebar__item-del" onClick={(e) => handleDelete(e, c.id)} title="Удалить">×</button>
             </div>
           ))}
           {conversations.length === 0 && (
-            <p className="ia-chat-sidebar__empty">История пуста</p>
+            <p className="ia-chat-sidebar__empty">История пуста.<br />Начни новый чат.</p>
           )}
         </div>
       </aside>
+
+      {/* Main */}
       <div className="ia-chat-main">
         <div className="ia-chat__feed" ref={feedRef}>
-          {messages.length === 0 && !loadingHistory && (
-            <AIMessage role="ai">{renderMarkdown(WELCOME)}</AIMessage>
-          )}
-          {loadingHistory && <AIMessage role="ai" typing />}
-          {messages.map((m, i) => (
-            <AIMessage key={i} role={m.role === 'user' ? 'user' : 'ai'}>
-              {m.role === 'user'
-                ? <p style={{ whiteSpace: 'pre-wrap' }}>{m.content}</p>
-                : renderMarkdown(m.content)}
-            </AIMessage>
-          ))}
-          {streamingText !== null && (
-            streamingText
-              ? <AIMessage role="ai">{renderMarkdown(streamingText)}</AIMessage>
-              : <AIMessage role="ai" typing />
-          )}
-          {error && (
-            <AIMessage role="ai"><p>⚠️ {error}</p></AIMessage>
-          )}
+          <div className="ia-chat__feed-inner">
+            {isEmpty && <AIMessage role="ai">{renderMarkdown(WELCOME)}</AIMessage>}
+            {loadingHistory && <AIMessage role="ai" typing />}
+            {messages.map((m, i) => (
+              <AIMessage key={i} role={m.role === 'user' ? 'user' : 'ai'}>
+                {m.role === 'user'
+                  ? <p style={{ whiteSpace: 'pre-wrap' }}>{m.content}</p>
+                  : renderMarkdown(m.content)}
+              </AIMessage>
+            ))}
+            {streamingText !== null && (
+              streamingText
+                ? <AIMessage role="ai">{renderMarkdown(streamingText)}</AIMessage>
+                : <AIMessage role="ai" typing />
+            )}
+            {error && (
+              <AIMessage role="ai"><p>⚠️ {error}</p></AIMessage>
+            )}
+          </div>
         </div>
-        <div className="ia-chat__composer">
-          <AIComposer
-            onSend={send}
-            disabled={sending}
-            suggestions={[
-              'Покажи текущее состояние портфеля',
-              'Когда ближайшие дивиденды?',
-              'Стоит ли ребалансировать?',
-            ]}
-          />
+
+        <div className="ia-chat__footer">
+          <div className="ia-chat__footer-inner">
+            <AIComposer
+              onSend={send}
+              disabled={sending}
+              suggestions={isEmpty ? SUGGESTIONS : []}
+            />
+          </div>
         </div>
       </div>
     </div>

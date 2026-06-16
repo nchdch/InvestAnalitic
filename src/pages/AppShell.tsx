@@ -274,7 +274,7 @@ export function AppShell({ page, onNav, onAddTrade, onAddPortfolio, onAddDeposit
             </div>
           </div>
         </header>
-        <div className="ia-content">{children}</div>
+        <div className={`ia-content${page === 'assistant' ? ' ia-content--chat' : ''}`}>{children}</div>
       </main>
     </div>
   )

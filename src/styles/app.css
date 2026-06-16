@@ -181,13 +181,15 @@
 .ia-row-detail__full .ia-table { background: var(--surface-card); border-radius: var(--radius-md); overflow: hidden; }
 
 /* ---- Chat ---- */
-.ia-chat-layout { display: flex; gap: 20px; align-items: flex-start; }
-.ia-chat-sidebar { width: 240px; flex-shrink: 0; position: sticky; top: 0; background: var(--surface-card); border: 1px solid var(--border-1); border-radius: var(--radius-md); overflow: hidden; }
-.ia-chat-sidebar__header { padding: 12px; border-bottom: 1px solid var(--border-1); }
-.ia-chat-sidebar__new { display: flex; align-items: center; gap: 6px; width: 100%; padding: 8px 12px; background: var(--accent); color: #fff; border: none; border-radius: var(--radius-md); font-size: var(--text-sm); font-weight: var(--fw-semibold); font-family: inherit; cursor: pointer; }
-.ia-chat-sidebar__new:hover { opacity: 0.88; }
-.ia-chat-sidebar__list { max-height: calc(100vh - 90px); overflow-y: auto; padding: 6px 8px; display: flex; flex-direction: column; gap: 2px; }
-.ia-chat-sidebar__item { position: relative; padding: 9px 32px 9px 12px; cursor: pointer; border-radius: var(--radius-md); }
+.ia-content--chat { overflow: hidden; padding: 0; }
+.ia-chat-layout { display: flex; height: 100%; overflow: hidden; }
+/* Sidebar */
+.ia-chat-sidebar { width: 260px; flex-shrink: 0; display: flex; flex-direction: column; background: var(--surface-card); border-right: 1px solid var(--border-1); }
+.ia-chat-sidebar__header { padding: 16px 14px 12px; border-bottom: 1px solid var(--divider); }
+.ia-chat-sidebar__new { display: flex; align-items: center; justify-content: center; gap: 7px; width: 100%; padding: 9px 16px; background: var(--accent); color: #fff; border: none; border-radius: var(--radius-md); font-size: var(--text-sm); font-weight: var(--fw-semibold); font-family: inherit; cursor: pointer; transition: background var(--dur-fast) var(--ease-out); }
+.ia-chat-sidebar__new:hover { background: var(--accent-hover); }
+.ia-chat-sidebar__list { flex: 1; overflow-y: auto; padding: 8px; display: flex; flex-direction: column; gap: 2px; }
+.ia-chat-sidebar__item { position: relative; padding: 10px 34px 10px 12px; cursor: pointer; border-radius: var(--radius-md); transition: background var(--dur-fast) var(--ease-out); }
 .ia-chat-sidebar__item:hover { background: var(--surface-sunken); }
 .ia-chat-sidebar__item--active { background: var(--accent-soft); }
 .ia-chat-sidebar__item-title { display: block; font-size: var(--text-sm); font-weight: var(--fw-medium); color: var(--text-1); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -196,10 +198,13 @@
 .ia-chat-sidebar__item-del { position: absolute; right: 6px; top: 50%; transform: translateY(-50%); width: 22px; height: 22px; background: none; border: none; border-radius: var(--radius-sm); color: var(--text-3); font-size: 15px; line-height: 1; cursor: pointer; display: none; align-items: center; justify-content: center; }
 .ia-chat-sidebar__item:hover .ia-chat-sidebar__item-del { display: flex; }
 .ia-chat-sidebar__item-del:hover { background: var(--surface-sunken); color: var(--text-1); }
-.ia-chat-sidebar__empty { padding: 20px 12px; font-size: var(--text-xs); color: var(--text-3); text-align: center; }
-.ia-chat-main { flex: 1; min-width: 0; }
-.ia-chat__feed { display: flex; flex-direction: column; gap: 18px; padding-bottom: 16px; }
-.ia-chat__composer { position: sticky; bottom: 0; padding-top: 8px; background: linear-gradient(to top, var(--surface-app) 72%, transparent); }
+.ia-chat-sidebar__empty { padding: 32px 16px; font-size: var(--text-xs); color: var(--text-3); text-align: center; line-height: 1.6; }
+/* Main area */
+.ia-chat-main { flex: 1; min-width: 0; display: flex; flex-direction: column; overflow: hidden; }
+.ia-chat__feed { flex: 1; overflow-y: auto; padding: 28px 40px 16px; scroll-behavior: smooth; }
+.ia-chat__feed-inner { max-width: 760px; margin: 0 auto; display: flex; flex-direction: column; gap: 20px; }
+.ia-chat__footer { flex-shrink: 0; padding: 8px 40px 24px; border-top: 1px solid var(--divider); background: var(--surface-app); }
+.ia-chat__footer-inner { max-width: 760px; margin: 0 auto; }
 
 /* ---- Rebalance ---- */
 .ia-grid-reb { display: grid; grid-template-columns: 1.2fr 1fr; gap: 20px; align-items: start; }
