@@ -115,7 +115,6 @@ export interface UpdateTradeInput {
   fee?: number
   currency?: string
   executedAt?: string
-  exchangeRate?: number
   accountId?: string
 }
 
@@ -163,7 +162,10 @@ export async function updateTrade(id: string, patch: UpdateTradeInput) {
     await rebuildPosition(client, oldAccountId, ticker)
 
     // Если счёт изменился — пересчитать на новом счёте
-    if (accountChanged && oldMeta) {
+    if (accountChanged) {
+      if (!oldMeta) {
+        throw new Error(`Невозможно перенести сделку: позиция ${ticker} не найдена на исходном счёте`)
+      }
       await rebuildPosition(client, newAccountId, ticker, {
         name: oldMeta.name,
         exchange: oldMeta.exchange,
