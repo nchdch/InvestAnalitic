@@ -194,7 +194,7 @@ export function TradeModal({ open, onClose, initial, editTrade }: Props) {
     if (!form.ticker.trim()) return setError('Введите тикер')
     if (!qty || qty <= 0) return setError('Количество должно быть больше 0')
     if (!price || price <= 0) return setError('Цена должна быть больше 0')
-    if (form.currency !== 'RUB' && (!exchangeRate || exchangeRate <= 0)) return setError(`Введите курс ${form.currency} к ₽`)
+    if (!editTrade && form.currency !== 'RUB' && (!exchangeRate || exchangeRate <= 0)) return setError(`Введите курс ${form.currency} к ₽`)
 
     setSubmitting(true)
     try {
