@@ -107,6 +107,17 @@ export function getTrades(accountId?: string, ticker?: string): Promise<Trade[]>
 export function createTrade(data: CreateTradeInput): Promise<Trade> {
   return request<Trade>('/trades', { method: 'POST', body: JSON.stringify(data) })
 }
+export interface UpdateTradeInput {
+  quantity?: number
+  price?: number
+  fee?: number
+  currency?: string
+  executedAt?: string
+  accountId?: string
+}
+export function updateTrade(id: string, patch: UpdateTradeInput): Promise<Trade> {
+  return request<Trade>(`/trades/${id}`, { method: 'PUT', body: JSON.stringify(patch) })
+}
 export function deleteTrade(id: string): Promise<void> {
   return request<void>(`/trades/${id}`, { method: 'DELETE' })
 }
