@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
-import { X, Trash2 } from 'lucide-react'
+import { X, Trash2, Pencil } from 'lucide-react'
 import { Button, Badge } from '../index'
+import { TradeModal } from './TradeModal'
 import { injectOnce } from '../_internal/style'
 import { getTrades, deleteTrade } from '../../api/client'
 import { usePortfolioStore } from '../../store/portfolioStore'
@@ -26,6 +27,7 @@ export function TradesListModal({ open, onClose, accountId, ticker, name }: Prop
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [editingTrade, setEditingTrade] = useState<Trade | null>(null)
 
   const load = useCallback(() => {
     setLoading(true)
@@ -97,14 +99,23 @@ export function TradesListModal({ open, onClose, accountId, ticker, name }: Prop
                       <td className="r ia-num">{formatPrice(t.price, t.currency)}</td>
                       <td className="r ia-num">{formatPrice(t.fee, t.currency)}</td>
                       <td className="r ia-num" style={{ color: 'var(--text-1)', fontWeight: 600 }}>{formatPrice(total, t.currency)}</td>
-                      <td className="r">
+                      <td className="r" style={{ display: 'flex', gap: 4, justifyContent: 'flex-end' }}>
+                        <button
+                          type="button"
+                          className="ia-table-icon-btn"
+                          onClick={() => setEditingTrade(t)}
+                          aria-label="Редактировать сделку"
+                          title="Редактировать"
+                        >
+                          <Pencil size={14} />
+                        </button>
                         <button
                           type="button"
                           className="ia-table-icon-btn"
                           onClick={() => handleDelete(t.id)}
                           disabled={deletingId === t.id}
                           aria-label="Удалить сделку"
-                          title="Удалить сделку"
+                          title="Удалить"
                         >
                           <Trash2 size={14} />
                         </button>
@@ -121,6 +132,24 @@ export function TradesListModal({ open, onClose, accountId, ticker, name }: Prop
           <Button type="button" variant="ghost" onClick={onClose}>Закрыть</Button>
         </div>
       </div>
+      <TradeModal
+        open={!!editingTrade}
+        editTrade={editingTrade ? {
+          id: editingTrade.id,
+          ticker: editingTrade.ticker,
+          side: editingTrade.side,
+          quantity: editingTrade.quantity,
+          price: editingTrade.price,
+          fee: editingTrade.fee,
+          currency: editingTrade.currency,
+          executedAt: editingTrade.executedAt,
+          accountId: editingTrade.accountId,
+        } : undefined}
+        onClose={() => {
+          setEditingTrade(null)
+          load()
+        }}
+      />
     </div>
   )
 }
