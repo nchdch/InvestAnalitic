@@ -217,3 +217,86 @@ export async function applySellToPosition(
     [newQty, pos.id]
   )
 }
+
+/** Метаданные для создания позиции, если её ещё нет на счёте. */
+export interface PositionMeta {
+  name?: string
+  exchange: string
+  assetType: 'equity' | 'bond'
+  currency: string
+  exchangeRate?: number
+}
+
+/**
+ * Пересчитать позицию по (accountId, ticker) с нуля из всех оставшихся сделок.
+ * Вызывать внутри транзакции, передавая client.
+ * Если quantity <= 0 — позиция удаляется.
+ * Если позиции нет, но quantity > 0 — создаётся с данными из meta.
+ */
+export async function rebuildPosition(
+  client: { query: typeof pool.query },
+  accountId: string,
+  ticker: string,
+  meta?: PositionMeta,
+): Promise<void> {
+  // Все сделки по паре (account, ticker) в хронологическом порядке
+  const { rows: tradeRows } = await client.query(
+    `SELECT side, quantity, price FROM trades
+     WHERE account_id = $1 AND ticker = $2
+     ORDER BY executed_at ASC`,
+    [accountId, ticker],
+  )
+
+  let totalQty = 0
+  let weightedSum = 0
+  let buyQty = 0
+
+  for (const t of tradeRows) {
+    const qty = Number(t.quantity)
+    const price = Number(t.price)
+    if (t.side === 'buy') {
+      totalQty += qty
+      weightedSum += qty * price
+      buyQty += qty
+    } else {
+      totalQty -= qty
+    }
+  }
+
+  const avgPrice = buyQty > 0 ? weightedSum / buyQty : 0
+
+  const { rows: posRows } = await client.query(
+    'SELECT id FROM positions WHERE account_id = $1 AND ticker = $2',
+    [accountId, ticker],
+  )
+
+  if (totalQty <= 0) {
+    // Нет бумаг — удалить позицию
+    await client.query(
+      'DELETE FROM positions WHERE account_id = $1 AND ticker = $2',
+      [accountId, ticker],
+    )
+    return
+  }
+
+  if (posRows.length > 0) {
+    // Позиция существует — обновить quantity и average_price
+    await client.query(
+      'UPDATE positions SET quantity = $1, average_price = $2, updated_at = NOW() WHERE id = $3',
+      [totalQty, avgPrice, posRows[0].id],
+    )
+  } else {
+    // Позиции нет — создать с метаданными
+    if (!meta) throw new Error(`Позиция ${ticker} не найдена на счёте, метаданные не переданы`)
+    await client.query(
+      `INSERT INTO positions
+        (account_id, ticker, name, exchange, asset_type, currency, quantity, average_price, averaging_method, exchange_rate)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'WAVG', $9)`,
+      [
+        accountId, ticker, meta.name ?? ticker,
+        meta.exchange, meta.assetType, meta.currency,
+        totalQty, avgPrice, meta.exchangeRate ?? 1,
+      ],
+    )
+  }
+}
