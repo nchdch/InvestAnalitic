@@ -1,5 +1,5 @@
 ﻿import { pool } from '../db/pool.js'
-import { applyBuyToPosition, applySellToPosition } from './positionService.js'
+import { applyBuyToPosition, applySellToPosition, rebuildPosition } from './positionService.js'
 
 function toRow(r: Record<string, unknown>) {
   return {
@@ -91,6 +91,94 @@ export async function createTrade(input: CreateTradeInput) {
 }
 
 export async function deleteTrade(id: string) {
-  const { rowCount } = await pool.query('DELETE FROM trades WHERE id = $1', [id])
-  return (rowCount ?? 0) > 0
+  const existing = await getTrade(id)
+  if (!existing) return false
+
+  const client = await pool.connect()
+  try {
+    await client.query('BEGIN')
+    await client.query('DELETE FROM trades WHERE id = $1', [id])
+    await rebuildPosition(client, existing.accountId as string, existing.ticker as string)
+    await client.query('COMMIT')
+    return true
+  } catch (err) {
+    await client.query('ROLLBACK')
+    throw err
+  } finally {
+    client.release()
+  }
+}
+
+export interface UpdateTradeInput {
+  quantity?: number
+  price?: number
+  fee?: number
+  currency?: string
+  executedAt?: string
+  exchangeRate?: number
+  accountId?: string
+}
+
+export async function updateTrade(id: string, patch: UpdateTradeInput) {
+  const existing = await getTrade(id)
+  if (!existing) return null
+
+  const oldAccountId = existing.accountId as string
+  const ticker = existing.ticker as string
+  const newAccountId = patch.accountId ?? oldAccountId
+  const accountChanged = newAccountId !== oldAccountId
+
+  const client = await pool.connect()
+  try {
+    await client.query('BEGIN')
+
+    // Получить метаданные позиции на старом счёте (для создания на новом, если нужно)
+    const { rows: metaRows } = await client.query(
+      'SELECT name, exchange, asset_type, currency, exchange_rate FROM positions WHERE account_id = $1 AND ticker = $2',
+      [oldAccountId, ticker],
+    )
+    const oldMeta = metaRows[0]
+
+    const fields: string[] = []
+    const vals: unknown[] = []
+    let i = 1
+    const add = (col: string, val: unknown) => { fields.push(`${col} = $${i++}`); vals.push(val) }
+
+    if (patch.quantity !== undefined) add('quantity', patch.quantity)
+    if (patch.price !== undefined) add('price', patch.price)
+    if (patch.fee !== undefined) add('fee', patch.fee)
+    if (patch.currency !== undefined) add('currency', patch.currency)
+    if (patch.executedAt !== undefined) add('executed_at', patch.executedAt)
+    if (patch.accountId !== undefined) add('account_id', patch.accountId)
+
+    if (fields.length > 0) {
+      vals.push(id)
+      await client.query(
+        `UPDATE trades SET ${fields.join(', ')} WHERE id = $${i}`,
+        vals,
+      )
+    }
+
+    // Пересчитать позицию на старом счёте
+    await rebuildPosition(client, oldAccountId, ticker)
+
+    // Если счёт изменился — пересчитать на новом счёте
+    if (accountChanged && oldMeta) {
+      await rebuildPosition(client, newAccountId, ticker, {
+        name: oldMeta.name,
+        exchange: oldMeta.exchange,
+        assetType: oldMeta.asset_type as 'equity' | 'bond',
+        currency: oldMeta.currency,
+        exchangeRate: Number(oldMeta.exchange_rate),
+      })
+    }
+
+    await client.query('COMMIT')
+    return getTrade(id)
+  } catch (err) {
+    await client.query('ROLLBACK')
+    throw err
+  } finally {
+    client.release()
+  }
 }
