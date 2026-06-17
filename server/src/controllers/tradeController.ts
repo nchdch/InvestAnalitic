@@ -46,3 +46,36 @@ export async function remove(req: AuthRequest, res: Response) {
   if (!ok) return res.status(404).json({ error: 'Trade not found' })
   res.status(204).send()
 }
+
+export async function update(req: AuthRequest, res: Response) {
+  const existing = await svc.getTrade(req.params.id)
+  if (!existing) return res.status(404).json({ error: 'Trade not found' })
+
+  const accessible = await getAccessibleAccountIds(req.userId!)
+  if (!accessible.includes(existing.accountId as string)) {
+    return res.status(404).json({ error: 'Trade not found' })
+  }
+
+  const body = req.body as svc.UpdateTradeInput
+
+  // Валидация числовых полей
+  if (body.quantity !== undefined && (body.quantity <= 0 || !Number.isFinite(body.quantity))) {
+    return res.status(400).json({ error: 'quantity должен быть больше 0' })
+  }
+  if (body.price !== undefined && (body.price <= 0 || !Number.isFinite(body.price))) {
+    return res.status(400).json({ error: 'price должен быть больше 0' })
+  }
+
+  // Проверить доступ к новому accountId, если он передан
+  if (body.accountId && !accessible.includes(body.accountId)) {
+    return res.status(403).json({ error: 'Нет доступа к счёту' })
+  }
+
+  try {
+    const updated = await svc.updateTrade(req.params.id, body)
+    if (!updated) return res.status(404).json({ error: 'Trade not found' })
+    res.json(updated)
+  } catch (err) {
+    res.status(400).json({ error: err instanceof Error ? err.message : String(err) })
+  }
+}
