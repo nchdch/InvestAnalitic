@@ -148,6 +148,7 @@ export function TradesListModal({ open, onClose, accountId, ticker, name }: Prop
         onClose={() => {
           setEditingTrade(null)
           load()
+          bump()
         }}
       />
     </div>

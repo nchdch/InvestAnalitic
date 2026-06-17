@@ -174,7 +174,7 @@ export function TradeModal({ open, onClose, initial, editTrade }: Props) {
 
   useEffect(() => {
     if (!open) return
-    if (editTrade) return          // ← добавить эту строку
+    if (editTrade) return
     if (!form.ticker.trim()) return
     loadPrice(form.ticker, form.assetType)
   // eslint-disable-next-line react-hooks/exhaustive-deps

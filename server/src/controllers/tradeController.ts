@@ -65,6 +65,9 @@ export async function update(req: AuthRequest, res: Response) {
   if (body.price !== undefined && (body.price <= 0 || !Number.isFinite(body.price))) {
     return res.status(400).json({ error: 'price должен быть больше 0' })
   }
+  if (body.fee !== undefined && (body.fee < 0 || !Number.isFinite(body.fee))) {
+    return res.status(400).json({ error: 'fee не может быть отрицательным' })
+  }
 
   // Проверить доступ к новому accountId, если он передан
   if (body.accountId && !accessible.includes(body.accountId)) {

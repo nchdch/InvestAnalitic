@@ -266,7 +266,7 @@ export async function rebuildPosition(
   const avgPrice = buyQty > 0 ? weightedSum / buyQty : 0
 
   const { rows: posRows } = await client.query(
-    'SELECT id FROM positions WHERE account_id = $1 AND ticker = $2',
+    'SELECT id FROM positions WHERE account_id = $1 AND ticker = $2 FOR UPDATE',
     [accountId, ticker],
   )
 
