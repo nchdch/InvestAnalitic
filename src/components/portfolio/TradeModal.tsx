@@ -2,7 +2,7 @@
 import { X, TrendingUp, Layers, RotateCw } from 'lucide-react'
 import { Button, Input, Select } from '../index'
 import { injectOnce } from '../_internal/style'
-import { getAccounts, createAccount, createTrade, getExchangeRate, getSecurityPrice } from '../../api/client'
+import { getAccounts, createAccount, createTrade, getExchangeRate, getSecurityPrice, updateTrade } from '../../api/client'
 import { usePortfolioStore } from '../../store/portfolioStore'
 import { SecuritySearchInput } from './SecuritySearchInput'
 import { MODAL_CSS } from './modalShared'
@@ -26,8 +26,22 @@ export interface TradeModalInitial {
 interface Props {
   open: boolean
   onClose: () => void
-  /** Предзаполнение формы при открытии из контекстного меню позиции («Купить»/«Продать»). */
   initial?: TradeModalInitial
+  /** Если передан — форма открывается в режиме редактирования этой сделки. */
+  editTrade?: {
+    id: string
+    ticker: string
+    side: 'buy' | 'sell'
+    quantity: number
+    price: number
+    fee: number
+    currency: string
+    executedAt: string
+    accountId: string
+    name?: string
+    assetType?: 'equity' | 'bond'
+    exchange?: string
+  }
 }
 
 interface FormState {
@@ -60,7 +74,7 @@ const EMPTY: FormState = {
   executedAt: today(),
 }
 
-export function TradeModal({ open, onClose, initial }: Props) {
+export function TradeModal({ open, onClose, initial, editTrade }: Props) {
   injectOnce('ia-modal', MODAL_CSS)
 
   const bump = usePortfolioStore((s) => s.bump)
@@ -80,7 +94,24 @@ export function TradeModal({ open, onClose, initial }: Props) {
 
   useEffect(() => {
     if (!open) return
-    setForm({ ...EMPTY, executedAt: today(), ...initial })
+    if (editTrade) {
+      setForm({
+        accountId: editTrade.accountId,
+        ticker: editTrade.ticker,
+        name: editTrade.name ?? '',
+        assetType: editTrade.assetType ?? 'equity',
+        exchange: editTrade.exchange ?? 'MOEX',
+        side: editTrade.side,
+        quantity: String(editTrade.quantity),
+        price: String(editTrade.price),
+        fee: String(editTrade.fee),
+        currency: editTrade.currency,
+        exchangeRate: '',
+        executedAt: editTrade.executedAt.slice(0, 10),
+      })
+    } else {
+      setForm({ ...EMPTY, executedAt: today(), ...initial })
+    }
     setError('')
     setRateDate('')
     setPriceLoaded(false)
@@ -90,7 +121,9 @@ export function TradeModal({ open, onClose, initial }: Props) {
     getAccounts()
       .then((list) => {
         setAccounts(list)
-        if (list.length > 0 && !initial?.accountId) setForm((f) => ({ ...f, accountId: list[0].id }))
+        if (list.length > 0 && !initial?.accountId && !editTrade) {
+          setForm((f) => ({ ...f, accountId: list[0].id }))
+        }
       })
       .catch(() => setAccounts([]))
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -141,6 +174,7 @@ export function TradeModal({ open, onClose, initial }: Props) {
 
   useEffect(() => {
     if (!open) return
+    if (editTrade) return          // ← добавить эту строку
     if (!form.ticker.trim()) return
     loadPrice(form.ticker, form.assetType)
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -164,30 +198,40 @@ export function TradeModal({ open, onClose, initial }: Props) {
 
     setSubmitting(true)
     try {
-      let accountId = form.accountId
-
-      if (needNewAccount) {
-        if (!newAccName.trim()) return setError('Введите название портфеля')
-        if (!newAccBroker.trim()) return setError('Введите брокера')
-        const acc = await createAccount(newAccName.trim(), newAccBroker.trim())
-        accountId = acc.id
+      if (editTrade) {
+        // Режим редактирования
+        await updateTrade(editTrade.id, {
+          quantity: qty,
+          price,
+          fee: Number(form.fee) || 0,
+          currency: form.currency,
+          executedAt: form.executedAt ? new Date(form.executedAt).toISOString() : undefined,
+          accountId: form.accountId || undefined,
+        })
+      } else {
+        // Режим создания
+        let accountId = form.accountId
+        if (needNewAccount) {
+          if (!newAccName.trim()) return setError('Введите название портфеля')
+          if (!newAccBroker.trim()) return setError('Введите брокера')
+          const acc = await createAccount(newAccName.trim(), newAccBroker.trim())
+          accountId = acc.id
+        }
+        await createTrade({
+          accountId,
+          ticker: form.ticker.trim().toUpperCase(),
+          name: form.name.trim() || undefined,
+          side: form.side,
+          quantity: qty,
+          price,
+          fee: Number(form.fee) || 0,
+          currency: form.currency,
+          exchangeRate: form.currency !== 'RUB' ? Number(form.exchangeRate) : undefined,
+          assetType: form.assetType,
+          exchange: form.exchange,
+          executedAt: form.executedAt ? new Date(form.executedAt).toISOString() : undefined,
+        })
       }
-
-      await createTrade({
-        accountId,
-        ticker: form.ticker.trim().toUpperCase(),
-        name: form.name.trim() || undefined,
-        side: form.side,
-        quantity: qty,
-        price,
-        fee: Number(form.fee) || 0,
-        currency: form.currency,
-        exchangeRate: form.currency !== 'RUB' ? exchangeRate : undefined,
-        assetType: form.assetType,
-        exchange: form.exchange,
-        executedAt: form.executedAt ? new Date(form.executedAt).toISOString() : undefined,
-      })
-
       bump()
       onClose()
     } catch (err) {
@@ -209,7 +253,7 @@ export function TradeModal({ open, onClose, initial }: Props) {
     <div className="ia-modal-backdrop" onClick={(e) => { if (e.target === e.currentTarget) onClose() }}>
       <div className="ia-modal" role="dialog" aria-modal="true" aria-label="Добавить сделку">
         <div className="ia-modal__head">
-          <span className="ia-modal__title">Добавить сделку</span>
+          <span className="ia-modal__title">{editTrade ? 'Редактировать сделку' : 'Добавить сделку'}</span>
           <button className="ia-modal-close" onClick={onClose} aria-label="Закрыть"><X size={18} /></button>
         </div>
 
@@ -251,58 +295,72 @@ export function TradeModal({ open, onClose, initial }: Props) {
             )}
 
             {/* Тип актива */}
-            <div>
-              <div className="ia-modal-section-label" style={{ marginBottom: 6 }}>Тип актива</div>
-              <div className="ia-toggle-row">
-                <button
-                  type="button"
-                  className={`ia-toggle-btn${form.assetType === 'equity' ? ' is-active' : ''}`}
-                  onClick={() => set('assetType', 'equity')}
-                >
-                  <TrendingUp size={15} /> Акция
-                </button>
-                <button
-                  type="button"
-                  className={`ia-toggle-btn${form.assetType === 'bond' ? ' is-active' : ''}`}
-                  onClick={() => set('assetType', 'bond')}
-                >
-                  <Layers size={15} /> Облигация
-                </button>
+            {editTrade ? (
+              <div className="ia-modal-section-label" style={{ marginBottom: 4 }}>
+                {form.assetType === 'equity' ? 'Акция' : 'Облигация'} · {form.ticker}
               </div>
-            </div>
+            ) : (
+              <div>
+                <div className="ia-modal-section-label" style={{ marginBottom: 6 }}>Тип актива</div>
+                <div className="ia-toggle-row">
+                  <button
+                    type="button"
+                    className={`ia-toggle-btn${form.assetType === 'equity' ? ' is-active' : ''}`}
+                    onClick={() => set('assetType', 'equity')}
+                  >
+                    <TrendingUp size={15} /> Акция
+                  </button>
+                  <button
+                    type="button"
+                    className={`ia-toggle-btn${form.assetType === 'bond' ? ' is-active' : ''}`}
+                    onClick={() => set('assetType', 'bond')}
+                  >
+                    <Layers size={15} /> Облигация
+                  </button>
+                </div>
+              </div>
+            )}
 
             {/* Направление */}
-            <div>
-              <div className="ia-modal-section-label" style={{ marginBottom: 6 }}>Операция</div>
-              <div className="ia-toggle-row">
-                <button
-                  type="button"
-                  className={`ia-toggle-btn${form.side === 'buy' ? ' is-active' : ''}`}
-                  onClick={() => set('side', 'buy')}
-                >
-                  Покупка
-                </button>
-                <button
-                  type="button"
-                  className={`ia-toggle-btn is-sell${form.side === 'sell' ? ' is-active' : ''}`}
-                  onClick={() => set('side', 'sell')}
-                >
-                  Продажа
-                </button>
+            {editTrade ? (
+              <div className="ia-modal-section-label" style={{ marginBottom: 4 }}>
+                {form.side === 'buy' ? 'Покупка' : 'Продажа'}
               </div>
-            </div>
+            ) : (
+              <div>
+                <div className="ia-modal-section-label" style={{ marginBottom: 6 }}>Операция</div>
+                <div className="ia-toggle-row">
+                  <button
+                    type="button"
+                    className={`ia-toggle-btn${form.side === 'buy' ? ' is-active' : ''}`}
+                    onClick={() => set('side', 'buy')}
+                  >
+                    Покупка
+                  </button>
+                  <button
+                    type="button"
+                    className={`ia-toggle-btn is-sell${form.side === 'sell' ? ' is-active' : ''}`}
+                    onClick={() => set('side', 'sell')}
+                  >
+                    Продажа
+                  </button>
+                </div>
+              </div>
+            )}
 
-            {/* Поиск бумаги */}
-            <SecuritySearchInput
-              selectedTicker={form.ticker}
-              onSelect={(s: SecuritySearchResult) => {
-                set('ticker', s.ticker)
-                set('name', s.shortName)
-                if (s.assetType) set('assetType', s.assetType)
-                set('currency', s.currency)
-                set('exchange', s.exchange)
-              }}
-            />
+            {/* Поиск бумаги — только при создании */}
+            {!editTrade && (
+              <SecuritySearchInput
+                selectedTicker={form.ticker}
+                onSelect={(s: SecuritySearchResult) => {
+                  set('ticker', s.ticker)
+                  set('name', s.shortName)
+                  if (s.assetType) set('assetType', s.assetType)
+                  set('currency', s.currency)
+                  set('exchange', s.exchange)
+                }}
+              />
+            )}
 
             {/* Кол-во + цена */}
             <div className="ia-field-row">
@@ -421,7 +479,7 @@ export function TradeModal({ open, onClose, initial }: Props) {
               Отмена
             </Button>
             <Button type="submit" loading={submitting}>
-              {form.side === 'buy' ? 'Купить' : 'Продать'}
+              {editTrade ? 'Сохранить' : form.side === 'buy' ? 'Купить' : 'Продать'}
             </Button>
           </div>
         </form>
